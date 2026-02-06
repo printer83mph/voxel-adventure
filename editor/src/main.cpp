@@ -1,8 +1,15 @@
-#include <SDL3/SDL.h>
+#include "editor.h"
+
+#include <cstdlib>
 #include <vxng/vxng-pub.h>
 
 int main() {
-    vxng::hello_world();
-    SDL_Log("%s", "Hello, SDL!");
-    return 0;
+    Editor editor = Editor();
+    auto initResult = editor.init();
+    if (initResult)
+        return initResult;
+
+    editor.loop();
+
+    return EXIT_SUCCESS;
 }

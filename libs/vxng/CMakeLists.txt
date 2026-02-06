@@ -1,7 +1,7 @@
 project(vxng)
 
 add_library(${PROJECT_NAME}
-  src/vxng-pub.cpp
+    src/vxng-pub.cpp
 )
 
 add_library(libs::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
@@ -14,7 +14,12 @@ target_include_directories(${PROJECT_NAME}
 		${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        libglew_shared
+)
+
 target_compile_features(${PROJECT_NAME}
-  PRIVATE
-    cxx_std_17
+    PRIVATE
+        cxx_std_17
 )

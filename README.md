@@ -4,6 +4,13 @@ Project name WIP
 
 ## Development
 
-Dependencies:
+```sh
+git submodule init
+```
 
-- GLEW
+We use `clangd` and `clang-format`. To create `compile_commands.json`, run:
+
+```sh
+mkdir build && cd build/
+cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```

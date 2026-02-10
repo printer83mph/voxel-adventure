@@ -1,2 +1,2 @@
-add_subdirectory(SDL)
-add_subdirectory(glew-cmake)
+add_subdirectory(SDL EXCLUDE_FROM_ALL)
+add_subdirectory(glew-cmake EXCLUDE_FROM_ALL)

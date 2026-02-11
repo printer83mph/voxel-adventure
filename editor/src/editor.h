@@ -5,6 +5,6 @@ class Editor {
     Editor();
     ~Editor();
 
-    int init();
-    void loop();
+    auto init() -> int;
+    auto loop() -> void;
 };

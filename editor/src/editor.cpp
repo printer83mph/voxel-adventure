@@ -5,7 +5,7 @@
 
 Editor::Editor() {}
 
-int Editor::init() {
+auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Initialization failed: %s", SDL_GetError());
         return EXIT_FAILURE;
@@ -22,7 +22,7 @@ int Editor::init() {
 
 Editor::~Editor() { SDL_Quit(); }
 
-void Editor::loop() {
+auto Editor::loop() -> void {
     bool quit = false;
     SDL_Event evt;
     while (!quit) {

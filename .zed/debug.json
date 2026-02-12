@@ -16,7 +16,7 @@
       ],
       "cwd": "$ZED_WORKTREE_ROOT/build",
     },
-    "program": "$ZED_WORKTREE_ROOT/build/editor/Debug/voxel-editor",
+    "program": "$ZED_WORKTREE_ROOT/build/Debug/voxel-editor",
     "request": "launch",
     "adapter": "CodeLLDB",
   },

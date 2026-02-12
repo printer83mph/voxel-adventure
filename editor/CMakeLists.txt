@@ -1,5 +1,3 @@
-include(FetchContent)
-
 project(voxel-editor)
 
 add_executable(${PROJECT_NAME})

@@ -1,9 +1,19 @@
 #include "editor.h"
+#include "SDL3/SDL_error.h"
+#include "vxng/renderer.h"
 
+#include <GL/glew.h>
 #include <SDL3/SDL.h>
-#include <cstdlib>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_video.h>
 
-Editor::Editor() {}
+#include <cstdlib>
+#include <iostream>
+
+#define OPENGL_MAJOR_VERSION 4
+#define OPENGL_MINOR_VERSION 1
+
+Editor::Editor() : renderer() {}
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -11,12 +21,64 @@ auto Editor::init() -> int {
         return EXIT_FAILURE;
     };
 
-    SDL_Window *window =
+    // use OpenGL at specified version
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, OPENGL_MAJOR_VERSION);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, OPENGL_MINOR_VERSION);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                        SDL_GL_CONTEXT_PROFILE_CORE);
+
+    // create window
+    this->sdl_window =
         SDL_CreateWindow("My Funny Window", 800, 600, SDL_WINDOW_RESIZABLE);
-    if (!window) {
+    if (!sdl_window) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    // create GL context
+    this->sdl_gl_context = SDL_GL_CreateContext(this->sdl_window);
+    if (!sdl_gl_context) {
+        SDL_Log("Couldn't create OpenGL context: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+
+    // ensure we got the right GL version
+    {
+        int gl_version;
+        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &gl_version);
+        if (gl_version != OPENGL_MAJOR_VERSION)
+            SDL_Log(
+                "Warning: OpenGL major version incorrect: Got %d, expected %d",
+                gl_version, OPENGL_MAJOR_VERSION);
+
+        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &gl_version);
+        if (gl_version != OPENGL_MINOR_VERSION)
+            SDL_Log(
+                "Warning: OpenGL minor version incorrect: Got %d, expected %d",
+                gl_version, OPENGL_MINOR_VERSION);
+    }
+
+    // setup glew
+    glewExperimental = GL_TRUE;
+    GLenum glewError = glewInit();
+    if (glewError != GLEW_OK) {
+        std::cout << "Error initializing glew!\n\n"
+                  << glewGetErrorString(glewError) << std::endl;
+        // TODO: should we return with failure here?
+    }
+
+    // use vsync
+    if (!SDL_GL_SetSwapInterval(1)) {
+        std::cout << "Warning: Unable to set VSync! SDL Error:"
+                  << SDL_GetError() << std::endl;
+        // TODO: should we return with failure here?
+    }
+
+    // setup our renderer
+    if (!this->renderer.init_gl()) {
+        return EXIT_FAILURE;
+    }
+
     return 0;
 }
 
@@ -26,7 +88,7 @@ auto Editor::loop() -> void {
     bool quit = false;
     SDL_Event evt;
     while (!quit) {
-        // SDL Events
+        // catch sdl events
         while (SDL_PollEvent(&evt)) {
             switch (evt.type) {
 
@@ -42,6 +104,10 @@ auto Editor::loop() -> void {
             }
         }
 
-        // App logic
+        // render all my things
+        this->renderer.render();
+
+        // update screen
+        SDL_GL_SwapWindow(this->sdl_window);
     }
 }

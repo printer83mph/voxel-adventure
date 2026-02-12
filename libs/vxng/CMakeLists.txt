@@ -1,6 +1,8 @@
 project(vxng)
 
 add_library(${PROJECT_NAME}
+    src/glsl/fullscreen.frag.cpp
+    src/glsl/fullscreen.vert.cpp
     src/gl-util.cpp
     src/renderer.cpp
     src/scene.cpp

@@ -2,8 +2,6 @@
 
 #include <cstdlib>
 
-#include <vxng/vxng.h>
-
 auto main() -> int {
     Editor editor = Editor();
     auto initResult = editor.init();

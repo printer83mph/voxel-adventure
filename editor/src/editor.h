@@ -1,7 +1,8 @@
 #pragma once
 
-#include "SDL3/SDL_video.h"
 #include "vxng/renderer.h"
+
+#include <SDL3/SDL_video.h>
 
 class Editor {
   public:
@@ -15,4 +16,6 @@ class Editor {
     SDL_Window *sdl_window;
     SDL_GLContext sdl_gl_context;
     vxng::Renderer renderer;
+
+    auto resize(int width, int height) -> void;
 };

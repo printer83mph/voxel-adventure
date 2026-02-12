@@ -1,9 +1,10 @@
 #include "editor.h"
-#include "SDL3/SDL_error.h"
 #include "vxng/renderer.h"
 
 #include <GL/glew.h>
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_video.h>
 
@@ -28,8 +29,8 @@ auto Editor::init() -> int {
                         SDL_GL_CONTEXT_PROFILE_CORE);
 
     // create window
-    this->sdl_window =
-        SDL_CreateWindow("My Funny Window", 800, 600, SDL_WINDOW_RESIZABLE);
+    this->sdl_window = SDL_CreateWindow(
+        "My Funny Window", 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!sdl_window) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -96,6 +97,10 @@ auto Editor::loop() -> void {
                 quit = true;
                 break;
 
+            case SDL_EVENT_WINDOW_RESIZED:
+                resize(evt.window.data1, evt.window.data2);
+                break;
+
             case SDL_EVENT_KEY_DOWN:
                 if (evt.key.key == SDLK_ESCAPE) {
                     quit = true;
@@ -105,9 +110,18 @@ auto Editor::loop() -> void {
         }
 
         // render all my things
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
         this->renderer.render();
 
         // update screen
         SDL_GL_SwapWindow(this->sdl_window);
     }
+}
+
+auto Editor::resize(int width, int height) -> void {
+    glViewport(0, 0, width, height);
+
+    // update info for shaders etc
+    this->renderer.resize(width, height);
 }

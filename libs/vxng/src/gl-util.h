@@ -9,11 +9,3 @@
 
 void printProgramLog(GLuint program);
 void printShaderLog(GLuint shader);
-
-typedef struct {
-    GLuint count;
-    GLuint instanceCount;
-    GLuint firstIndex;
-    int baseVertex;
-    GLuint baseInstance;
-} DrawElementsIndirectCommand;

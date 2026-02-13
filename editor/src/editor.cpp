@@ -6,6 +6,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
+#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_video.h>
 
 #include <cstdlib>
@@ -32,14 +33,16 @@ auto Editor::init() -> int {
     this->sdl_window = SDL_CreateWindow(
         "My Funny Window", 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!sdl_window) {
-        SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM,
+                     "Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
     // create GL context
     this->sdl_gl_context = SDL_GL_CreateContext(this->sdl_window);
     if (!sdl_gl_context) {
-        SDL_Log("Couldn't create OpenGL context: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
+                     "Couldn't create OpenGL context: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
@@ -48,13 +51,15 @@ auto Editor::init() -> int {
         int gl_version;
         SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &gl_version);
         if (gl_version != OPENGL_MAJOR_VERSION)
-            SDL_Log(
+            SDL_LogWarn(
+                SDL_LOG_CATEGORY_VIDEO,
                 "Warning: OpenGL major version incorrect: Got %d, expected %d",
                 gl_version, OPENGL_MAJOR_VERSION);
 
         SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &gl_version);
         if (gl_version != OPENGL_MINOR_VERSION)
-            SDL_Log(
+            SDL_LogWarn(
+                SDL_LOG_CATEGORY_VIDEO,
                 "Warning: OpenGL minor version incorrect: Got %d, expected %d",
                 gl_version, OPENGL_MINOR_VERSION);
     }
@@ -70,8 +75,7 @@ auto Editor::init() -> int {
 
     // use vsync
     if (!SDL_GL_SetSwapInterval(1)) {
-        std::cout << "Warning: Unable to set VSync! SDL Error:"
-                  << SDL_GetError() << std::endl;
+        SDL_Log("Warning: Unable to set VSync: %s", SDL_GetError());
         // TODO: should we return with failure here?
     }
 

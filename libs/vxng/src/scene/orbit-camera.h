@@ -8,8 +8,8 @@ namespace vxng::scene {
 
 class OrbitCamera : vxng::scene::Camera {
   public:
-    OrbitCamera(float distance, glm::vec3 angle_euler_xyz, float sensitivity,
-                float min_x, float max_x);
+    OrbitCamera(glm::vec3 target, glm::vec3 angle_euler_yxz, float distance,
+                float sensitivity, float min_x, float max_x);
     OrbitCamera();
     ~OrbitCamera();
 
@@ -25,7 +25,8 @@ class OrbitCamera : vxng::scene::Camera {
   private:
     auto update_camera() -> void;
 
-    glm::vec3 angle_euler_xyz;
+    glm::vec3 target;
+    glm::vec3 angle_euler_yxz;
     float distance;
 };
 

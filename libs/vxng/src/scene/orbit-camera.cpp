@@ -48,8 +48,7 @@ auto OrbitCamera::on_pan(float dx, float dy) -> void {
 
 auto OrbitCamera::update_camera() -> void {
     this->rotation = glm::orientate3(this->angle_euler_yxz);
-    this->position =
-        this->target + glm::vec3(0.f, 0.f, -this->distance) * this->rotation;
+    this->position = this->target - this->rotation[2] * this->distance;
 }
 
 } // namespace vxng::scene

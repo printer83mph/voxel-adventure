@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vxng/camera.h"
 #include "vxng/scene.h"
 
 #include <GL/glew.h>

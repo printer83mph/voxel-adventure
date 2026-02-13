@@ -1,4 +1,4 @@
-#include "camera.h"
+#include "vxng/camera.h"
 
 namespace vxng::scene {
 

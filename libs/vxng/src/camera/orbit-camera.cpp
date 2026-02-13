@@ -1,4 +1,4 @@
-#include "orbit-camera.h"
+#include "vxng/orbit-camera.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>

@@ -1,4 +1,5 @@
 #include "editor.h"
+
 #include "vxng/renderer.h"
 
 #include <GL/glew.h>

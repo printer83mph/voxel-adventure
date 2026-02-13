@@ -1,8 +1,8 @@
 #include "vxng/scene.h"
 
-namespace vxng {
+namespace vxng::scene {
 
 Scene::Scene() {}
 Scene::~Scene() {}
 
-} // namespace vxng
+} // namespace vxng::scene

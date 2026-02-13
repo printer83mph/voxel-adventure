@@ -1,6 +1,6 @@
 #pragma once
 
-namespace vxng {
+namespace vxng::scene {
 
 class Scene {
   public:
@@ -8,4 +8,4 @@ class Scene {
     ~Scene();
 };
 
-} // namespace vxng
+} // namespace vxng::scene

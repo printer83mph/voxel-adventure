@@ -91,7 +91,7 @@ auto Renderer::resize(int width, int height) -> void {
     // adjust shader parameters to new screen size
 };
 
-auto Renderer::set_scene(const vxng::Scene *scene) -> void {
+auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
     throw not_implemented_error();
 };
 

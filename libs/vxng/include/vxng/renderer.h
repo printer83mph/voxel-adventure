@@ -17,7 +17,7 @@ class Renderer {
     /** Sets up program + shader bindings */
     auto init_gl() -> bool;
     auto resize(int width, int height) -> void;
-    auto set_scene(vxng::Scene const *scene) -> void;
+    auto set_scene(vxng::scene::Scene const *scene) -> void;
     auto render() const -> void;
 
   private:

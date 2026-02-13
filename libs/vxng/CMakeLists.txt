@@ -3,9 +3,9 @@ project(vxng)
 add_library(${PROJECT_NAME}
     src/glsl/fullscreen.frag.cpp
     src/glsl/fullscreen.vert.cpp
+    src/scene/scene.cpp
     src/gl-util.cpp
     src/renderer.cpp
-    src/scene.cpp
 )
 
 add_library(libs::${PROJECT_NAME} ALIAS ${PROJECT_NAME})

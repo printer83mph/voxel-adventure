@@ -21,6 +21,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         libglew_shared
+        glm::glm
 )
 
 target_compile_features(${PROJECT_NAME}

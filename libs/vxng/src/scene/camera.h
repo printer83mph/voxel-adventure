@@ -5,16 +5,17 @@
 
 namespace vxng::scene {
 
+/**
+ * Base class representing a camera, for use in rendering with a `Scene` object.
+ * Handles OpenGL buffer allocation, updates, and deallocation.
+ *
+ * Should be subclassed for various camera types (i.e. walk, orbit, etc).
+ */
 class Camera {
-  public:
+  protected:
     Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad);
     Camera();
     ~Camera();
-
-    // Update various camera parameters
-    auto set_position(glm::vec3 position) -> void;
-    auto set_rotation(glm::mat3 rotation) -> void;
-    auto set_fovy(float fov_rad) -> void;
 
     /** Updates buffer, should be called after any `set_` method */
     auto update_gl() -> void;
@@ -22,11 +23,11 @@ class Camera {
     /** Creates buffer for use in shader programs */
     auto init_gl() -> void;
 
-  private:
     glm::vec3 position;
     glm::mat3 rotation;
-    float fovy_rad, near_plane, far_plane;
+    float fovy_rad;
 
+  private:
     struct {
         bool initialized;
         GLuint ubo; // uniform buffer object, structure below

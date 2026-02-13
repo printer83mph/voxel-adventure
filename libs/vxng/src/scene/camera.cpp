@@ -1,7 +1,5 @@
 #include "camera.h"
 
-#include "util.h"
-
 namespace vxng::scene {
 
 Camera::Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad)
@@ -28,21 +26,6 @@ Camera::~Camera() {
     // cleanup openGL stuffs
     glDeleteBuffers(1, &this->gl.ubo);
 };
-
-auto Camera::set_rotation(glm::mat3 rotation) -> void {
-    // TODO: Implement rotation logic
-    throw not_implemented_error();
-}
-
-auto Camera::set_position(glm::vec3 position) -> void {
-    // TODO: Implement position logic
-    throw not_implemented_error();
-}
-
-auto Camera::set_fovy(float fov_rad) -> void {
-    // TODO: Implement field of view logic
-    throw not_implemented_error();
-}
 
 auto Camera::update_gl() -> void {
     if (!this->gl.initialized)

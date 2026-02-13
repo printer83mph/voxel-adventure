@@ -1,5 +1,6 @@
 #pragma once
 
+#include <GL/glew.h>
 #include <glm/glm.hpp>
 
 namespace vxng::scene {
@@ -28,7 +29,12 @@ class Camera {
 
     struct {
         bool initialized;
-        // GL pointers
+        GLuint ubo; // uniform buffer object, structure below
+        /*
+         * mat4 model matrix
+         * mat4 inv model matrix
+         * float fovy (radians)
+         */
     } gl;
 };
 

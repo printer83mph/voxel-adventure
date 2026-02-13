@@ -5,11 +5,6 @@ namespace vxng::shaders {
 const std::string FULLSCREEN_VERT = R"glsl(
 #version 410 core
 
-struct CameraUniforms {
-    mat4 model;
-    mat4 invModel;
-    float fovy_rad;
-};
 
 // TODO: use camera uniforms
 // uniform CameraUniforms camera;

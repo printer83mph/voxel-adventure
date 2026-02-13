@@ -3,7 +3,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
 
-namespace vxng::scene {
+namespace vxng::camera {
 
 OrbitCamera::OrbitCamera(glm::vec3 target, glm::vec3 angle_euler_yxz,
                          float distance, float fovy_rad)
@@ -51,4 +51,4 @@ auto OrbitCamera::update_camera() -> void {
     this->position = this->target - this->rotation[2] * this->distance;
 }
 
-} // namespace vxng::scene
+} // namespace vxng::camera

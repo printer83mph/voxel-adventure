@@ -4,9 +4,9 @@
 
 #include <glm/ext/scalar_constants.hpp>
 
-namespace vxng::scene {
+namespace vxng::camera {
 
-class OrbitCamera : vxng::scene::Camera {
+class OrbitCamera : public vxng::camera::Camera {
   public:
     OrbitCamera(glm::vec3 target, glm::vec3 angle_euler_yxz, float distance,
                 float fovy_rad);
@@ -33,4 +33,4 @@ class OrbitCamera : vxng::scene::Camera {
     float distance;
 };
 
-} // namespace vxng::scene
+} // namespace vxng::camera

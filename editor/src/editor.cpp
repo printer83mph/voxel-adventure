@@ -16,7 +16,9 @@
 #define OPENGL_MAJOR_VERSION 4
 #define OPENGL_MINOR_VERSION 1
 
-Editor::Editor() : renderer() {}
+Editor::Editor() : renderer(), viewport_camera() {
+    renderer.set_camera(&viewport_camera);
+}
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {

@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
-namespace vxng::scene {
+namespace vxng::camera {
 
 /**
  * Base class representing a camera, for use in rendering with a `Scene` object.
@@ -39,4 +39,4 @@ class Camera {
     } gl;
 };
 
-} // namespace vxng::scene
+} // namespace vxng::camera

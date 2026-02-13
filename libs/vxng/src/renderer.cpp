@@ -64,6 +64,12 @@ auto Renderer::init_gl() -> bool {
 
     glLinkProgram(gl_program);
 
+    // use uniform blocks
+    {
+        GLuint camera_block = glGetUniformBlockIndex(gl_program, "Camera");
+        glUniformBlockBinding(gl_program, camera_block, 0); // 0 for camera data
+    }
+
     // check for errors
     GLint program_success = GL_TRUE;
     glGetProgramiv(gl_program, GL_LINK_STATUS, &program_success);
@@ -95,12 +101,18 @@ auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
     throw not_implemented_error();
 };
 
+auto Renderer::set_camera(const vxng::camera::Camera *camera) -> void {
+    this->active_camera = camera;
+}
+
 auto Renderer::render() const -> void {
     glBindVertexArray(this->gl.vao);
     glUseProgram(this->gl.program);
+
     // don't use any buffers, we just let our vert shader set gl_Position
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    glUseProgram(NULL);
+
+    glUseProgram(0);
 };
 
 } // namespace vxng

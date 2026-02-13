@@ -19,6 +19,7 @@ class Renderer {
     auto init_gl() -> bool;
     auto resize(int width, int height) -> void;
     auto set_scene(vxng::scene::Scene const *scene) -> void;
+    auto set_camera(const vxng::camera::Camera *camera) -> void;
     auto render() const -> void;
 
   private:
@@ -28,7 +29,12 @@ class Renderer {
         GLuint frag_shader;
         GLuint vert_shader;
         GLuint vao;
+        struct {
+            GLuint camera_uniforms;
+        } attribs;
     } gl;
+
+    const vxng::camera::Camera *active_camera;
 };
 
 } // namespace vxng

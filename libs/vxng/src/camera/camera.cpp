@@ -1,6 +1,6 @@
 #include "vxng/camera.h"
 
-namespace vxng::scene {
+namespace vxng::camera {
 
 Camera::Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad)
     : position(position), rotation(rotation), fovy_rad(fovy_rad) {}
@@ -12,6 +12,10 @@ auto Camera::init_gl() -> void {
     glBindBuffer(GL_UNIFORM_BUFFER, this->gl.ubo);
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2 + sizeof(float),
                  nullptr, GL_DYNAMIC_DRAW);
+
+    // use bind point 0 for camera data
+    glBindBufferBase(GL_UNIFORM_BUFFER, 2, this->gl.ubo);
+
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     this->gl.initialized = true;
@@ -46,4 +50,4 @@ auto Camera::update_gl() -> void {
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-} // namespace vxng::scene
+} // namespace vxng::camera

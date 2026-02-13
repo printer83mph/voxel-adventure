@@ -8,14 +8,25 @@ namespace vxng::scene {
 
 class OrbitCamera : vxng::scene::Camera {
   public:
-    auto on_mouse_rotate(float dx, float dy);
+    OrbitCamera(float distance, glm::vec3 angle_euler_xyz, float sensitivity,
+                float min_x, float max_x);
+    OrbitCamera();
+    ~OrbitCamera();
+
+    auto on_rotate(float dx, float dy) -> void;
+    auto on_zoom(float delta) -> void;
 
     /** Tweakable settings */
     struct {
-        float sensitivity = 0.1f;
-        float min_x = glm::pi<float>();
-        float max_x = -glm::pi<float>();
+        float sensitivity;
+        float min_x, max_x;
     } settings;
+
+  private:
+    auto update_camera() -> void;
+
+    glm::vec3 angle_euler_xyz;
+    float distance;
 };
 
 } // namespace vxng::scene

@@ -2,7 +2,7 @@
 
 namespace vxng::shaders {
 
-const std::string FULLSCREEN_VERT = R"(
+const std::string FULLSCREEN_VERT = R"glsl(
 #version 410 core
 
 out vec2 texcoords;
@@ -12,6 +12,6 @@ void main() {
         gl_Position = vec4(vertices[gl_VertexID],0,1);
         texcoords = 0.5 * gl_Position.xy + vec2(0.5);
 }
-)";
+)glsl";
 
 } // namespace vxng::shaders

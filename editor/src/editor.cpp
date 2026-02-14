@@ -139,5 +139,17 @@ auto Editor::handle_resize(int width, int height) -> void {
 }
 
 auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
-    this->viewport_camera.handle_rotation(event.xrel, event.yrel);
+    // only control camera if alt is held
+    SDL_Keymod mods = SDL_GetModState();
+    if (!(mods & SDL_KMOD_ALT)) {
+        return;
+    }
+
+    if (event.state & SDL_BUTTON_LMASK) {
+        this->viewport_camera.handle_rotation(event.xrel, event.yrel);
+    } else if (event.state & SDL_BUTTON_RMASK) {
+        this->viewport_camera.handle_zoom(event.yrel);
+    } else if (event.state & SDL_BUTTON_MMASK) {
+        this->viewport_camera.handle_pan(event.xrel, event.yrel);
+    }
 }

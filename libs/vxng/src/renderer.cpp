@@ -8,6 +8,9 @@
 
 #include <iostream>
 
+#define UNIF_BIND_GLOBALS 0
+#define UNIF_BIND_CAMERA 1
+
 namespace vxng {
 
 Renderer::Renderer() {};
@@ -66,8 +69,10 @@ auto Renderer::init_gl() -> bool {
 
     // use uniform blocks
     {
+        GLuint globals_block = glGetUniformBlockIndex(gl_program, "Globals");
         GLuint camera_block = glGetUniformBlockIndex(gl_program, "Camera");
-        glUniformBlockBinding(gl_program, camera_block, 0); // 0 for camera data
+        glUniformBlockBinding(gl_program, globals_block, UNIF_BIND_GLOBALS);
+        glUniformBlockBinding(gl_program, camera_block, UNIF_BIND_CAMERA);
     }
 
     // check for errors
@@ -84,17 +89,31 @@ auto Renderer::init_gl() -> bool {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
+    // setup global rendering params ubo
+    GLuint globals_ubo;
+    {
+        glGenBuffers(1, &globals_ubo);
+        glBindBuffer(GL_UNIFORM_BUFFER, globals_ubo);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(float), nullptr,
+                     GL_DYNAMIC_DRAW);
+
+        glBindBufferBase(GL_UNIFORM_BUFFER, UNIF_BIND_GLOBALS, globals_ubo);
+    }
+
     this->gl.initialized = true;
     this->gl.program = gl_program;
     this->gl.vert_shader = vert_shader;
     this->gl.frag_shader = frag_shader;
     this->gl.vao = vao;
+    this->gl.globals_ubo = globals_ubo;
 
     return true;
 }
 
 auto Renderer::resize(int width, int height) -> void {
-    // adjust shader parameters to new screen size
+    float aspect = (float)width / (float)height;
+    glBindBuffer(GL_UNIFORM_BUFFER, this->gl.globals_ubo);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(float), &aspect);
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
@@ -103,8 +122,8 @@ auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
 
 auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {
     this->active_camera = camera;
-    // use bind point 0 for camera data
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera->get_ubo());
+    // bind this camera's ubo to our bind point
+    glBindBufferBase(GL_UNIFORM_BUFFER, UNIF_BIND_CAMERA, camera->get_ubo());
 }
 
 auto Renderer::render() const -> void {

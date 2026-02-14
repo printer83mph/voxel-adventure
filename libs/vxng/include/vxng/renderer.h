@@ -29,9 +29,7 @@ class Renderer {
         GLuint frag_shader;
         GLuint vert_shader;
         GLuint vao;
-        struct {
-            GLuint camera_uniforms;
-        } attribs;
+        GLuint globals_ubo;
     } gl;
 
     const vxng::camera::Camera *active_camera;

@@ -5,6 +5,10 @@ namespace vxng::shaders {
 const std::string FULLSCREEN_FRAG = R"glsl(
 #version 410 core
 
+layout (std140) uniform Globals
+{
+    float aspectRatio;
+};
 layout (std140) uniform Camera
 {
     mat4 viewMat;
@@ -19,7 +23,6 @@ void main() {
     vec2 ndcCoords = texcoords * 2.0 - 1.0;
 
     // compute ray direction in view space
-    float aspectRatio = 4.0 / 3.0; // TODO: pass as uniform for resizing
     float tanHalfFov = tan(fovYRad * 0.5);
     vec3 rayDirView = normalize(vec3(
         ndcCoords.x * aspectRatio * tanHalfFov,

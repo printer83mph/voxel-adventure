@@ -139,5 +139,5 @@ auto Editor::handle_resize(int width, int height) -> void {
 }
 
 auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
-    this->viewport_camera.on_rotate(event.xrel, event.yrel);
+    this->viewport_camera.handle_rotation(event.xrel, event.yrel);
 }

@@ -17,7 +17,7 @@ OrbitCamera::OrbitCamera()
 
 OrbitCamera::~OrbitCamera() = default;
 
-auto OrbitCamera::on_rotate(float dx, float dy) -> void {
+auto OrbitCamera::handle_rotation(float dx, float dy) -> void {
     // clamp x rotation to not go upside down
     this->angle_euler_yxz.x = glm::clamp(
         this->angle_euler_yxz.y + dy * this->settings.rotate_sensitivity,
@@ -29,14 +29,14 @@ auto OrbitCamera::on_rotate(float dx, float dy) -> void {
     this->update_gl();
 }
 
-auto OrbitCamera::on_zoom(float delta) -> void {
+auto OrbitCamera::handle_zoom(float delta) -> void {
     this->distance -= delta;
 
     this->update_camera();
     this->update_gl();
 }
 
-auto OrbitCamera::on_pan(float dx, float dy) -> void {
+auto OrbitCamera::handle_pan(float dx, float dy) -> void {
     glm::vec3 right = this->rotation[0];
     glm::vec3 up = this->rotation[1];
 

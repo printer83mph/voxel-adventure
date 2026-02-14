@@ -13,9 +13,9 @@ class OrbitCamera : public vxng::camera::Camera {
     OrbitCamera();
     ~OrbitCamera();
 
-    auto on_rotate(float dx, float dy) -> void;
-    auto on_zoom(float delta) -> void;
-    auto on_pan(float dx, float dy) -> void;
+    auto handle_rotation(float dx, float dy) -> void;
+    auto handle_zoom(float delta) -> void;
+    auto handle_pan(float dx, float dy) -> void;
 
     /** Tweakable settings for consumers */
     struct {

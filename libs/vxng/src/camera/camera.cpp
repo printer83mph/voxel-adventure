@@ -35,15 +35,15 @@ auto Camera::update_gl() -> void {
         return;
 
     // compute model matrix and inverse
-    glm::mat4 model = glm::mat4(this->rotation);
-    model[3] = glm::vec4(this->position, 1.0f);
-    glm::mat4 inv_model = glm::inverse(model);
+    glm::mat4 inv_view = glm::mat4(this->rotation);
+    inv_view[3] = glm::vec4(this->position, 1.0f);
+    glm::mat4 view = glm::inverse(inv_view);
 
     // upload our data to GPU side
     glBindBuffer(GL_UNIFORM_BUFFER, this->gl.ubo);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &model);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &view);
     glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
-                    &inv_model);
+                    &inv_view);
     glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, sizeof(float),
                     &this->fovy_rad);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);

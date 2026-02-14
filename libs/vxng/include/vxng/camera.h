@@ -34,8 +34,8 @@ class Camera {
         bool initialized;
         GLuint ubo; // uniform buffer object, structure below
         /*
-         * mat4 model matrix
-         * mat4 inv model matrix
+         * mat4 view matrix (world-to-camera)
+         * mat4 inv view matrix (camera-to-world)
          * float fovy (radians)
          */
     } gl;

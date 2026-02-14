@@ -16,8 +16,24 @@ in vec2 texcoords;
 out vec4 FragColor;
 
 void main() {
-    float testValue = viewMat[0][1];
-    FragColor = vec4(texcoords.x, texcoords.y, testValue, 1.0);
+    vec2 ndcCoords = texcoords * 2.0 - 1.0;
+
+    // compute ray direction in view space
+    float aspectRatio = 4.0 / 3.0; // TODO: pass as uniform for resizing
+    float tanHalfFov = tan(fovYRad * 0.5);
+    vec3 rayDirView = normalize(vec3(
+        ndcCoords.x * aspectRatio * tanHalfFov,
+        ndcCoords.y * tanHalfFov,
+        -1.0
+    ));
+    // vec3 rayDirView = vec3(0., 0., -1.);
+
+    // transform to world space
+    vec3 rayDirWorld = mat3(invViewMat) * rayDirView;
+    vec3 rayOrigin = invViewMat[3].xyz;
+
+    FragColor = vec4(rayDirWorld, 1.0);
+    // FragColor = vec4(ndcCoords, 0.0, 1.0);
 }
 )glsl";
 

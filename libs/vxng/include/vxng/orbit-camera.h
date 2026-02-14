@@ -2,7 +2,7 @@
 
 #include "camera.h"
 
-#include <glm/ext/scalar_constants.hpp>
+#include <glm/gtc/constants.hpp>
 
 namespace vxng::camera {
 
@@ -19,8 +19,9 @@ class OrbitCamera : public vxng::camera::Camera {
 
     /** Tweakable settings for consumers */
     struct {
-        float rotate_sensitivity = 0.001f;
-        float min_x = glm::pi<float>(), max_x = -glm::pi<float>();
+        float rotate_sensitivity = 0.005f;
+        float min_x = -glm::half_pi<float>() * 0.99f,
+              max_x = glm::half_pi<float>() * 0.99f;
         float pan_sensitivity = 0.01f;
         float zoom_sensitivity = 0.01f;
     } settings;
@@ -30,7 +31,7 @@ class OrbitCamera : public vxng::camera::Camera {
     auto update_camera() -> void;
 
     glm::vec3 target;
-    glm::vec3 angle_euler_yxz;
+    glm::vec3 angle_euler;
     float distance;
 };
 

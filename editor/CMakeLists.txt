@@ -17,4 +17,5 @@ target_link_libraries(${PROJECT_NAME}
         libs::vxng
         SDL3::SDL3
         libglew_shared
+        glm::glm
 )

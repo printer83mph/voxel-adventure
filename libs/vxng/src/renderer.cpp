@@ -114,6 +114,7 @@ auto Renderer::resize(int width, int height) -> void {
     float aspect = (float)width / (float)height;
     glBindBuffer(GL_UNIFORM_BUFFER, this->gl.globals_ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(float), &aspect);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {

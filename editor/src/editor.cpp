@@ -86,6 +86,11 @@ auto Editor::init() -> int {
     }
     this->viewport_camera.init_gl();
 
+    // set initial renderer size
+    int width, height;
+    SDL_GetWindowSize(sdl_window, &width, &height);
+    renderer.resize(width, height);
+
     renderer.set_active_camera(&viewport_camera);
 
     return 0;

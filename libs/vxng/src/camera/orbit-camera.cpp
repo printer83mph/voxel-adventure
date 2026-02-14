@@ -30,7 +30,7 @@ auto OrbitCamera::handle_rotation(float dx, float dy) -> void {
 }
 
 auto OrbitCamera::handle_zoom(float delta) -> void {
-    this->distance -= delta;
+    this->distance *= glm::exp(-delta * this->settings.zoom_sensitivity);
 
     this->update_camera();
     this->update_gl();

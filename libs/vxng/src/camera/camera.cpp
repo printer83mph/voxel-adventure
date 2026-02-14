@@ -13,15 +13,14 @@ auto Camera::init_gl() -> void {
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2 + sizeof(float),
                  nullptr, GL_DYNAMIC_DRAW);
 
-    // use bind point 0 for camera data
-    glBindBufferBase(GL_UNIFORM_BUFFER, 2, this->gl.ubo);
-
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     this->gl.initialized = true;
     // update buffer to match current CPU values
     this->update_gl();
 }
+
+auto Camera::get_ubo() const -> GLuint { return this->gl.ubo; }
 
 Camera::~Camera() {
     if (!this->gl.initialized)

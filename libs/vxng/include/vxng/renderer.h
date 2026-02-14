@@ -19,7 +19,7 @@ class Renderer {
     auto init_gl() -> bool;
     auto resize(int width, int height) -> void;
     auto set_scene(vxng::scene::Scene const *scene) -> void;
-    auto set_camera(const vxng::camera::Camera *camera) -> void;
+    auto set_active_camera(const vxng::camera::Camera *camera) -> void;
     auto render() const -> void;
 
   private:

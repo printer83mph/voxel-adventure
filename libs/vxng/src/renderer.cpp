@@ -101,8 +101,10 @@ auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
     throw not_implemented_error();
 };
 
-auto Renderer::set_camera(const vxng::camera::Camera *camera) -> void {
+auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {
     this->active_camera = camera;
+    // use bind point 0 for camera data
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera->get_ubo());
 }
 
 auto Renderer::render() const -> void {

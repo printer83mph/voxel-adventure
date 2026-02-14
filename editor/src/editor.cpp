@@ -16,9 +16,7 @@
 #define OPENGL_MAJOR_VERSION 4
 #define OPENGL_MINOR_VERSION 1
 
-Editor::Editor() : renderer(), viewport_camera() {
-    renderer.set_camera(&viewport_camera);
-}
+Editor::Editor() : renderer(), viewport_camera() {}
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -86,6 +84,9 @@ auto Editor::init() -> int {
     if (!this->renderer.init_gl()) {
         return EXIT_FAILURE;
     }
+    this->viewport_camera.init_gl();
+
+    renderer.set_active_camera(&viewport_camera);
 
     return 0;
 }
@@ -105,7 +106,7 @@ auto Editor::loop() -> void {
                 break;
 
             case SDL_EVENT_WINDOW_RESIZED:
-                resize(evt.window.data1, evt.window.data2);
+                handle_resize(evt.window.data1, evt.window.data2);
                 break;
 
             case SDL_EVENT_KEY_DOWN:
@@ -113,6 +114,10 @@ auto Editor::loop() -> void {
                     quit = true;
                     break;
                 }
+
+            case SDL_EVENT_MOUSE_MOTION:
+                handle_mouse_motion(evt.motion);
+                break;
             }
         }
 
@@ -126,9 +131,13 @@ auto Editor::loop() -> void {
     }
 }
 
-auto Editor::resize(int width, int height) -> void {
+auto Editor::handle_resize(int width, int height) -> void {
     glViewport(0, 0, width, height);
 
     // update info for shaders etc
     this->renderer.resize(width, height);
+}
+
+auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
+    this->viewport_camera.on_rotate(event.xrel, event.yrel);
 }

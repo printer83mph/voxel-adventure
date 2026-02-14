@@ -12,6 +12,11 @@ namespace vxng::camera {
  * Should be subclassed for various camera types (i.e. walk, orbit, etc).
  */
 class Camera {
+  public:
+    /** Creates buffer for use in shader programs */
+    auto init_gl() -> void;
+    auto get_ubo() const -> GLuint;
+
   protected:
     Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad);
     Camera();
@@ -19,9 +24,6 @@ class Camera {
 
     /** Updates buffer, should be called after any `set_` method */
     auto update_gl() -> void;
-
-    /** Creates buffer for use in shader programs */
-    auto init_gl() -> void;
 
     glm::vec3 position;
     glm::mat3 rotation;

@@ -26,14 +26,12 @@ void main() {
         ndcCoords.y * tanHalfFov,
         -1.0
     ));
-    // vec3 rayDirView = vec3(0., 0., -1.);
 
     // transform to world space
     vec3 rayDirWorld = mat3(invViewMat) * rayDirView;
     vec3 rayOrigin = invViewMat[3].xyz;
 
     FragColor = vec4(rayDirWorld, 1.0);
-    // FragColor = vec4(ndcCoords, 0.0, 1.0);
 }
 )glsl";
 

@@ -13,6 +13,9 @@
 #include <cstdlib>
 #include <iostream>
 
+// 4.1 gives us support for MacOS, but we need the "SSBO" extension to allow for
+// our massive chunk data to be passed thru and used in a fullscreen shader
+// instead of verts. (eek!) Surely GLEW will help us here!
 #define OPENGL_MAJOR_VERSION 4
 #define OPENGL_MINOR_VERSION 1
 

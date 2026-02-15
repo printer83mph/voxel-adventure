@@ -54,6 +54,12 @@ auto Chunk::update_buffers() -> void {
                  sizeof(GPUOctreeNode) * octree_nodes.size(), &octree_nodes[0],
                  GL_DYNAMIC_DRAW);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, this->gl.vxdata_ssbo);
+    glBufferData(GL_SHADER_STORAGE_BUFFER,
+                 sizeof(GPUOctreeNode) * voxel_datas.size(), &voxel_datas[0],
+                 GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 } // namespace vxng::scene

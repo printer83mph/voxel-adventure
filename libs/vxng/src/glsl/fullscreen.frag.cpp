@@ -4,6 +4,17 @@ namespace vxng::shaders {
 
 const std::string FULLSCREEN_FRAG = R"glsl(
 #version 410 core
+#extension GL_ARB_shader_storage_buffer_object : require
+
+struct OctreeNode {
+    uint childMask;
+    uint firstChildIdx;
+    uint voxelDataIdx;
+};
+
+struct VoxelData {
+    uint colorPacked;
+};
 
 layout (std140) uniform Globals
 {
@@ -14,6 +25,15 @@ layout (std140) uniform Camera
     mat4 viewMat;
     mat4 invViewMat;
     float fovYRad;
+};
+
+layout (std430) readonly buffer OctreeNodes
+{
+    OctreeNode octreeNodes[];
+};
+layout (std430) readonly buffer VoxelDatas
+{
+    VoxelData voxelData[];
 };
 
 in vec2 texcoords;

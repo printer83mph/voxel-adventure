@@ -5,10 +5,6 @@ namespace vxng::shaders {
 const std::string FULLSCREEN_VERT = R"glsl(
 #version 410 core
 
-
-// TODO: use camera uniforms
-// uniform CameraUniforms camera;
-
 out vec2 texcoords;
 
 void main() {

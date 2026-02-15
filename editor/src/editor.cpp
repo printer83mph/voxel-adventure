@@ -74,13 +74,12 @@ auto Editor::init() -> int {
     if (glewError != GLEW_OK) {
         std::cout << "Error initializing glew!\n\n"
                   << glewGetErrorString(glewError) << std::endl;
-        // TODO: should we return with failure here?
+        return EXIT_FAILURE;
     }
 
-    // use vsync
+    // use vsync if possible
     if (!SDL_GL_SetSwapInterval(1)) {
         SDL_Log("Warning: Unable to set VSync: %s", SDL_GetError());
-        // TODO: should we return with failure here?
     }
 
     // setup our renderer

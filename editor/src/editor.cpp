@@ -157,7 +157,8 @@ auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
         this->viewport_camera.handle_rotation(event.xrel, event.yrel);
     } else if (event.state & SDL_BUTTON_RMASK) {
         this->viewport_camera.handle_zoom(event.yrel);
-    } else if (event.state & SDL_BUTTON_MMASK) {
+    } else if (event.state & SDL_BUTTON_X1MASK) {
+        // TODO: figure out why the hell SDL_BUTTON_MMASK breaks everything
         this->viewport_camera.handle_pan(event.xrel, event.yrel);
     }
 }

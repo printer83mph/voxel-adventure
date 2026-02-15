@@ -23,7 +23,7 @@ class OrbitCamera : public vxng::camera::Camera {
         float min_x = -glm::half_pi<float>() * 0.99f,
               max_x = glm::half_pi<float>() * 0.99f;
         float pan_sensitivity = 0.01f;
-        float zoom_sensitivity = 0.01f;
+        float zoom_sensitivity = 0.005f;
     } settings;
 
   private:

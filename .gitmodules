@@ -3,11 +3,6 @@
 	url = https://github.com/libsdl-org/SDL.git
 	; Pinned to tag 'release-3.4.0'
 
-[submodule "vendor/glew-cmake"]
-	path = vendor/glew-cmake
-	url = https://github.com/Perlmint/glew-cmake.git
-	; Pinned to tag 'glew-cmake-2.3.1'
-
 [submodule "vendor/glm"]
 	path = vendor/glm
 	url = https://github.com/g-truc/glm.git

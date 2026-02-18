@@ -20,6 +20,7 @@ class Editor {
         wgpu::Device device;
         wgpu::Queue queue;
         wgpu::Surface surface;
+        wgpu::TextureFormat preferred_format;
     } wgpu;
 
     vxng::Renderer renderer;
@@ -27,6 +28,8 @@ class Editor {
 
     auto draw_to_surface() -> void;
     auto get_next_surface_texture_view() -> wgpu::TextureView;
+    auto get_surface_configuration(int width, int height)
+        -> wgpu::SurfaceConfiguration;
 
     auto poll_events(bool &quit) -> void;
     auto handle_resize(int width, int height) -> void;

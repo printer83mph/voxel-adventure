@@ -1,7 +1,8 @@
 #include "editor.h"
-#include "SDL3/SDL_video.h"
 
+#include <SDL3/SDL.h>
 #include <sdl3webgpu.h>
+#include <webgpu/webgpu_cpp.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -17,9 +18,8 @@ auto Editor::init() -> int {
     };
 
     // create window
-    this->sdl_window = SDL_CreateWindow("My Funny Window", 800, 600, 0
-                                        // SDL_WINDOW_RESIZABLE
-    );
+    this->sdl_window =
+        SDL_CreateWindow("My Funny Window", 800, 600, SDL_WINDOW_RESIZABLE);
     if (!sdl_window) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM,
                      "Couldn't create window/renderer: %s", SDL_GetError());
@@ -116,33 +116,26 @@ auto Editor::init() -> int {
     // get queue from device
     this->wgpu.queue = this->wgpu.device.GetQueue();
 
-    // configure the surface
-    wgpu::SurfaceConfiguration config = {};
-
-    // configuration of the textures created for the underlying swap chain
-    config.width = 640;
-    config.height = 480;
-    config.usage = wgpu::TextureUsage::RenderAttachment;
     wgpu::SurfaceCapabilities capabilities;
     this->wgpu.surface.GetCapabilities(adapter, &capabilities);
-    config.format = capabilities.formats[0]; // supposedly this is preferred
+    this->wgpu.preferred_format =
+        capabilities.formats[0]; // supposedly this is preferred
 
-    // and we do not need any particular view format:
-    config.viewFormatCount = 0;
-    config.viewFormats = nullptr;
-    config.device = this->wgpu.device;
-    config.presentMode = wgpu::PresentMode::Fifo;
-    config.alphaMode = wgpu::CompositeAlphaMode::Auto;
+    int width, height;
+    SDL_GetWindowSize(sdl_window, &width, &height);
 
+    // configure the surface for the underlying swap chain
+    wgpu::SurfaceConfiguration config =
+        get_surface_configuration(width, height);
     this->wgpu.surface.Configure(&config);
+
+    // ok now we init members!
 
     if (!this->renderer.init_webgpu(&this->wgpu.device)) {
         return EXIT_FAILURE;
     }
 
-    // set initial renderer size
-    int width, height;
-    SDL_GetWindowSize(sdl_window, &width, &height);
+    // set initial renderer size (shader globals)
     this->renderer.resize(width, height);
 
     /*
@@ -223,6 +216,21 @@ auto Editor::draw_to_surface() -> void {
     this->wgpu.surface.Present();
 }
 
+auto Editor::get_surface_configuration(int width, int height)
+    -> wgpu::SurfaceConfiguration {
+    wgpu::SurfaceConfiguration config = {};
+    config.width = width;
+    config.height = height;
+    config.usage = wgpu::TextureUsage::RenderAttachment;
+    config.format = this->wgpu.preferred_format;
+    config.viewFormatCount = 0; // and we do not need any particular view format
+    config.viewFormats = nullptr;
+    config.device = this->wgpu.device;
+    config.presentMode = wgpu::PresentMode::Fifo;
+    config.alphaMode = wgpu::CompositeAlphaMode::Auto;
+    return config;
+}
+
 auto Editor::get_next_surface_texture_view() -> wgpu::TextureView {
     // get the surface texture
     wgpu::SurfaceTexture surface_texture;
@@ -279,13 +287,13 @@ auto Editor::poll_events(bool &quit) -> void {
 }
 
 auto Editor::handle_resize(int width, int height) -> void {
-    /*
-        // TODO: webgpuize
-        glViewport(0, 0, width, height);
+    // reconfigure the surface with new dimensions
+    wgpu::SurfaceConfiguration config =
+        get_surface_configuration(width, height);
+    this->wgpu.surface.Configure(&config);
 
-        // update info for shaders etc
-        this->renderer.resize(width, height);
-    */
+    // update info for shaders etc
+    this->renderer.resize(width, height);
 }
 
 auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {

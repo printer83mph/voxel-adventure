@@ -12,8 +12,3 @@
 	path = vendor/glm
 	url = https://github.com/g-truc/glm.git
 	; Pinned to tag '1.0.3'
-
-[submodule "vendor/sdl3webgpu"]
-	path = vendor/sdl3webgpu
-	url = https://github.com/eliemichel/sdl3webgpu.git
-	; Pinned to tag 'v1.0.0'

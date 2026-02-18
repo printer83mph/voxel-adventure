@@ -20,13 +20,18 @@ class Renderer {
     auto resize(int width, int height) -> void;
     auto set_scene(vxng::scene::Scene const *scene) -> void;
     // auto set_active_camera(const vxng::camera::Camera *camera) -> void;
-    auto render() const -> void;
+    auto render(wgpu::RenderPassEncoder &renderPass) const -> void;
 
   private:
     struct {
         bool initialized;
         wgpu::Device *device;
         wgpu::Buffer globals_uniforms_buffer, camera_uniforms_buffer;
+        wgpu::BindGroupLayout bind_group_layout;
+        wgpu::BindGroup bind_group;
+        wgpu::ShaderModule shader_module;
+        wgpu::PipelineLayout pipeline_layout;
+        wgpu::RenderPipeline render_pipeline;
     } wgpu;
 
     // const vxng::camera::Camera *active_camera;

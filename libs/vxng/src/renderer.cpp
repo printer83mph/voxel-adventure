@@ -9,9 +9,6 @@
 
 #include <iostream>
 
-#define UNIF_BIND_GLOBALS 0
-#define UNIF_BIND_CAMERA 1
-
 namespace vxng {
 
 Renderer::Renderer() {};
@@ -33,7 +30,7 @@ typedef struct WgslCameraUniforms {
 auto Renderer::init_webgpu(wgpu::Device device) -> bool {
 
     // create uniform buffers
-    wgpu::Buffer globals_buffer, camera_buffer;
+    wgpu::Buffer globals_buffer;
     {
         wgpu::BufferDescriptor globals_desc;
         globals_desc.label = "Scene globals uniform buffer";
@@ -41,61 +38,56 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         globals_desc.usage =
             wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
         globals_buffer = device.CreateBuffer(&globals_desc);
-
-        wgpu::BufferDescriptor camera_desc;
-        camera_desc.label = "Camera uniform buffer";
-        camera_desc.size = 144;
-        camera_desc.usage =
-            wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
-        camera_buffer = device.CreateBuffer(&camera_desc);
     }
 
-    // create bind group layout for shaders
-    wgpu::BindGroupLayout bind_group_layout = nullptr;
+    // create bind group layouts for shaders
+    wgpu::BindGroupLayout globals_bind_group_layout = nullptr;
+    wgpu::BindGroupLayout camera_bind_group_layout = nullptr;
     {
-        std::array<wgpu::BindGroupLayoutEntry, 2> bgl_entries;
+        // globals bind group layout (group 0)
+        wgpu::BindGroupLayoutEntry globals_layout_entry;
+        globals_layout_entry.binding = 0;
+        globals_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        globals_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
+        globals_layout_entry.buffer.minBindingSize = 4;
 
-        wgpu::BindGroupLayoutEntry &globals_layout = bgl_entries[0];
-        globals_layout.binding = 0;
-        globals_layout.visibility = wgpu::ShaderStage::Fragment;
-        globals_layout.buffer.type = wgpu::BufferBindingType::Uniform;
-        globals_layout.buffer.minBindingSize = 4;
+        wgpu::BindGroupLayoutDescriptor globals_bgl_desc;
+        globals_bgl_desc.label = "Globals bind group layout";
+        globals_bgl_desc.entryCount = 1;
+        globals_bgl_desc.entries = &globals_layout_entry;
+        globals_bind_group_layout =
+            device.CreateBindGroupLayout(&globals_bgl_desc);
 
-        wgpu::BindGroupLayoutEntry &camera_layout = bgl_entries[1];
-        camera_layout.binding = 1;
-        camera_layout.visibility = wgpu::ShaderStage::Fragment;
-        camera_layout.buffer.type = wgpu::BufferBindingType::Uniform;
-        camera_layout.buffer.minBindingSize = 144;
+        // camera bind group layout (group 1)
+        wgpu::BindGroupLayoutEntry camera_layout_entry;
+        camera_layout_entry.binding = 0;
+        camera_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        camera_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
+        camera_layout_entry.buffer.minBindingSize = 144;
 
-        wgpu::BindGroupLayoutDescriptor bgl_desc;
-        bgl_desc.label = "Render uniforms binding group";
-        bgl_desc.entryCount = 2;
-        bgl_desc.entries = &bgl_entries[0];
-        bind_group_layout = device.CreateBindGroupLayout(&bgl_desc);
+        wgpu::BindGroupLayoutDescriptor camera_bgl_desc;
+        camera_bgl_desc.label = "Camera bind group layout";
+        camera_bgl_desc.entryCount = 1;
+        camera_bgl_desc.entries = &camera_layout_entry;
+        camera_bind_group_layout =
+            device.CreateBindGroupLayout(&camera_bgl_desc);
     }
 
-    // create bind groups for shaders
-    wgpu::BindGroup bind_group = nullptr;
+    // create globals bind group (camera bind group created in
+    // set_active_camera)
+    wgpu::BindGroup globals_bind_group = nullptr;
     {
-        std::array<wgpu::BindGroupEntry, 2> bg_entries;
-
-        wgpu::BindGroupEntry &globals_entry = bg_entries[0];
+        wgpu::BindGroupEntry globals_entry;
         globals_entry.binding = 0;
         globals_entry.buffer = globals_buffer;
         globals_entry.offset = 0;
         globals_entry.size = 4;
 
-        wgpu::BindGroupEntry &camera_entry = bg_entries[1];
-        camera_entry.binding = 1;
-        camera_entry.buffer = camera_buffer;
-        camera_entry.offset = 0;
-        camera_entry.size = 144;
-
         wgpu::BindGroupDescriptor bg_desc;
-        bg_desc.layout = bind_group_layout;
-        bg_desc.entryCount = 2;
-        bg_desc.entries = &bg_entries[0];
-        bind_group = device.CreateBindGroup(&bg_desc);
+        bg_desc.layout = globals_bind_group_layout;
+        bg_desc.entryCount = 1;
+        bg_desc.entries = &globals_entry;
+        globals_bind_group = device.CreateBindGroup(&bg_desc);
     }
 
     // create shader module
@@ -118,10 +110,13 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     // create pipeline layout
     wgpu::PipelineLayout pipeline_layout = nullptr;
     {
+        std::array<wgpu::BindGroupLayout, 2> bind_group_layouts = {
+            globals_bind_group_layout, camera_bind_group_layout};
+
         wgpu::PipelineLayoutDescriptor layout_desc;
         layout_desc.label = "Render pipeline layout";
-        layout_desc.bindGroupLayoutCount = 1;
-        layout_desc.bindGroupLayouts = &bind_group_layout;
+        layout_desc.bindGroupLayoutCount = 2;
+        layout_desc.bindGroupLayouts = bind_group_layouts.data();
         pipeline_layout = device.CreatePipelineLayout(&layout_desc);
     }
 
@@ -190,9 +185,10 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     this->wgpu.device = device;
     this->wgpu.queue = device.GetQueue();
     this->wgpu.globals_uniforms_buffer = globals_buffer;
-    this->wgpu.camera_uniforms_buffer = camera_buffer;
-    this->wgpu.bind_group_layout = bind_group_layout;
-    this->wgpu.bind_group = bind_group;
+    this->wgpu.globals_bind_group_layout = globals_bind_group_layout;
+    this->wgpu.camera_bind_group_layout = camera_bind_group_layout;
+    this->wgpu.globals_bind_group = globals_bind_group;
+    // camera_bind_group is set in set_active_camera
     this->wgpu.shader_module = shader_module;
     this->wgpu.pipeline_layout = pipeline_layout;
     this->wgpu.render_pipeline = render_pipeline;
@@ -210,20 +206,30 @@ auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
     throw not_implemented_error();
 };
 
-/*
 auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {
     this->active_camera = camera;
-    // bind this camera's ubo to our bind point
-    glBindBufferBase(GL_UNIFORM_BUFFER, UNIF_BIND_CAMERA, camera->get_ubo());
+
+    // create a new bind group for this camera's buffer
+    wgpu::BindGroupEntry camera_entry;
+    camera_entry.binding = 0;
+    camera_entry.buffer = camera->get_buffer();
+    camera_entry.offset = 0;
+    camera_entry.size = 144;
+
+    wgpu::BindGroupDescriptor bg_desc;
+    bg_desc.layout = this->wgpu.camera_bind_group_layout;
+    bg_desc.entryCount = 1;
+    bg_desc.entries = &camera_entry;
+    this->wgpu.camera_bind_group = this->wgpu.device.CreateBindGroup(&bg_desc);
 }
-*/
 
 auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
     // set the render pipeline
     render_pass.SetPipeline(this->wgpu.render_pipeline);
 
-    // bind the uniform bind group
-    render_pass.SetBindGroup(0, this->wgpu.bind_group);
+    // bind the uniform bind groups
+    render_pass.SetBindGroup(0, this->wgpu.globals_bind_group);
+    render_pass.SetBindGroup(1, this->wgpu.camera_bind_group);
 
     // draw fullscreen triangle (3 vertices, 1 instance)
     render_pass.Draw(3, 1, 0, 0);

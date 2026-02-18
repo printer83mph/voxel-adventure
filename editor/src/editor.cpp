@@ -7,9 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 
-Editor::Editor()
-    : renderer() //, viewport_camera()
-{};
+Editor::Editor() : renderer(), viewport_camera() {};
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -138,11 +136,8 @@ auto Editor::init() -> int {
     // set initial renderer size (shader globals)
     this->renderer.resize(width, height);
 
-    /*
-        // TODO: webgpuize
-        this->viewport_camera.init_gl();
-        this->renderer.set_active_camera(&this->viewport_camera);
-    */
+    this->viewport_camera.init_webgpu(this->wgpu.device);
+    this->renderer.set_active_camera(&this->viewport_camera);
 
     return 0;
 }
@@ -303,14 +298,11 @@ auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
         return;
     }
 
-    /*
-        // TODO: bring back
-        if (event.state & SDL_BUTTON_LMASK) {
-            this->viewport_camera.handle_rotation(event.xrel, event.yrel);
-        } else if (event.state & SDL_BUTTON_RMASK) {
-            this->viewport_camera.handle_zoom(event.yrel);
-        } else if (event.state & SDL_BUTTON_MMASK) {
-            this->viewport_camera.handle_pan(event.xrel, event.yrel);
-        }
-    */
+    if (event.state & SDL_BUTTON_LMASK) {
+        this->viewport_camera.handle_rotation(event.xrel, event.yrel);
+    } else if (event.state & SDL_BUTTON_RMASK) {
+        this->viewport_camera.handle_zoom(event.yrel);
+    } else if (event.state & SDL_BUTTON_MMASK) {
+        this->viewport_camera.handle_pan(event.xrel, event.yrel);
+    }
 }

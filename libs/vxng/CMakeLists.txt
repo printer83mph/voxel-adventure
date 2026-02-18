@@ -1,6 +1,7 @@
 project(vxng)
 
 add_library(${PROJECT_NAME}
+    src/wgsl/fullscreen.wgsl.cpp
     src/camera/camera.cpp
     src/camera/orbit-camera.cpp
     src/scene/scene.cpp

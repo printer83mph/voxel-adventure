@@ -1,10 +1,11 @@
 #pragma once
 
-#include "vxng/orbit-camera.h"
-#include "vxng/renderer.h"
+// #include "vxng/orbit-camera.h"
+// #include "vxng/renderer.h"
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
+#include <webgpu/webgpu.hpp>
 
 class Editor {
   public:
@@ -16,9 +17,13 @@ class Editor {
 
   private:
     SDL_Window *sdl_window;
-    SDL_GLContext sdl_gl_context;
-    vxng::Renderer renderer;
-    vxng::camera::OrbitCamera viewport_camera;
+    struct {
+        wgpu::Instance instance;
+        wgpu::Surface surface;
+    } wgpu;
+
+    // vxng::Renderer renderer;
+    // vxng::camera::OrbitCamera viewport_camera;
 
     auto handle_resize(int width, int height) -> void;
     auto handle_mouse_motion(SDL_MouseMotionEvent event) -> void;

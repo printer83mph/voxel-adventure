@@ -1,22 +1,24 @@
 #include "editor.h"
 
-#include "vxng/renderer.h"
+// #include "vxng/renderer.h"
 
-#include <GL/glew.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_video.h>
+#include <sdl3webgpu.h>
+#include <webgpu/webgpu.hpp>
 
 #include <cstdlib>
-#include <iostream>
 
 #define OPENGL_MAJOR_VERSION 4
 #define OPENGL_MINOR_VERSION 1
 
-Editor::Editor() : renderer(), viewport_camera() {}
+Editor::Editor()
+    // : renderer(), viewport_camera()
+    = default;
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -39,46 +41,10 @@ auto Editor::init() -> int {
         return SDL_APP_FAILURE;
     }
 
-    // create GL context
-    this->sdl_gl_context = SDL_GL_CreateContext(this->sdl_window);
-    if (!sdl_gl_context) {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
-                     "Couldn't create OpenGL context: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
-
-    // ensure we got the right GL version
-    {
-        int gl_version;
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &gl_version);
-        if (gl_version != OPENGL_MAJOR_VERSION)
-            SDL_LogWarn(
-                SDL_LOG_CATEGORY_VIDEO,
-                "Warning: OpenGL major version incorrect: Got %d, expected %d",
-                gl_version, OPENGL_MAJOR_VERSION);
-
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &gl_version);
-        if (gl_version != OPENGL_MINOR_VERSION)
-            SDL_LogWarn(
-                SDL_LOG_CATEGORY_VIDEO,
-                "Warning: OpenGL minor version incorrect: Got %d, expected %d",
-                gl_version, OPENGL_MINOR_VERSION);
-    }
-
-    // setup glew
-    glewExperimental = GL_TRUE;
-    GLenum glewError = glewInit();
-    if (glewError != GLEW_OK) {
-        std::cout << "Error initializing glew!\n\n"
-                  << glewGetErrorString(glewError) << std::endl;
-        // TODO: should we return with failure here?
-    }
-
-    // use vsync
-    if (!SDL_GL_SetSwapInterval(1)) {
-        SDL_Log("Warning: Unable to set VSync: %s", SDL_GetError());
-        // TODO: should we return with failure here?
-    }
+    // setup webgpu
+    this->wgpu.instance = WGPUInstance();
+    this->wgpu.surface =
+        SDL_GetWGPUSurface(this->wgpu.instance, this->sdl_window);
 
     // setup our renderer
     if (!this->renderer.init_gl()) {
@@ -89,9 +55,9 @@ auto Editor::init() -> int {
     // set initial renderer size
     int width, height;
     SDL_GetWindowSize(sdl_window, &width, &height);
-    renderer.resize(width, height);
+    this->renderer.resize(width, height);
 
-    renderer.set_active_camera(&viewport_camera);
+    this->renderer.set_active_camera(&this->viewport_camera);
 
     return 0;
 }
@@ -127,9 +93,10 @@ auto Editor::loop() -> void {
         }
 
         // render all my things
-        glClearColor(0.f, 0.f, 0.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        this->renderer.render();
+        // TODO: webgpuize
+        // glClearColor(0.f, 0.f, 0.f, 1.f);
+        // glClear(GL_COLOR_BUFFER_BIT);
+        // this->renderer.render();
 
         // update screen
         SDL_GL_SwapWindow(this->sdl_window);
@@ -137,7 +104,8 @@ auto Editor::loop() -> void {
 }
 
 auto Editor::handle_resize(int width, int height) -> void {
-    glViewport(0, 0, width, height);
+    // TODO: webgpuize
+    // glViewport(0, 0, width, height);
 
     // update info for shaders etc
     this->renderer.resize(width, height);

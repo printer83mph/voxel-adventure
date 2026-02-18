@@ -8,7 +8,7 @@ auto main() -> int {
     if (initResult)
         return initResult;
 
-    editor.loop();
+    editor.run();
 
     return EXIT_SUCCESS;
 }

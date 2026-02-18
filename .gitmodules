@@ -1,3 +1,8 @@
+[submodule "vendor/dawn"]
+	path = vendor/dawn
+	url = https://github.com/google/dawn.git
+	; Pinned to tag 'v20260214.164635'
+
 [submodule "vendor/SDL"]
 	path = vendor/SDL
 	url = https://github.com/libsdl-org/SDL.git
@@ -7,11 +12,6 @@
 	path = vendor/glm
 	url = https://github.com/g-truc/glm.git
 	; Pinned to tag '1.0.3'
-
-[submodule "vendor/webgpu"]
-	path = vendor/webgpu
-	url = https://github.com/eliemichel/WebGPU-distribution.git
-	; Pinned to tag 'main-v0.2.0'
 
 [submodule "vendor/sdl3webgpu"]
 	path = vendor/sdl3webgpu

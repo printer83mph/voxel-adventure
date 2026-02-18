@@ -108,8 +108,8 @@ auto Editor::init() -> int {
 
     // block until the device request completes
     waitStatus = wgpu_instance.WaitAny(future, UINT64_MAX);
-    if (waitStatus != wgpu::WaitStatus::Success || !adapter) {
-        std::cerr << "Failed to wait for adapter" << std::endl;
+    if (waitStatus != wgpu::WaitStatus::Success || !this->wgpu.device) {
+        std::cerr << "Failed to wait for device" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -276,8 +276,8 @@ auto Editor::poll_events(bool &quit) -> void {
         case SDL_EVENT_KEY_DOWN:
             if (evt.key.key == SDLK_ESCAPE) {
                 quit = true;
-                break;
             }
+            break;
 
         case SDL_EVENT_MOUSE_MOTION:
             handle_mouse_motion(evt.motion);

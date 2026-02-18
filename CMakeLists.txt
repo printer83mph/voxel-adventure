@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 4.2)
 
-project(voxel-adventure VERSION 0.0.0 LANGUAGES CXX)
+project(voxel-adventure VERSION 0.0.0 LANGUAGES C CXX)
 
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}")

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <webgpu/webgpu_cpp.h>
 
 namespace vxng::camera {
 
@@ -14,8 +14,8 @@ namespace vxng::camera {
 class Camera {
   public:
     /** Creates buffer for use in shader programs */
-    auto init_gl() -> void;
-    auto get_ubo() const -> GLuint;
+    auto init_webgpu(wgpu::Device device) -> void;
+    auto get_buffer() const -> wgpu::Buffer;
 
   protected:
     Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad);
@@ -23,7 +23,7 @@ class Camera {
     ~Camera();
 
     /** Updates buffer, should be called after any `set_` method */
-    auto update_gl() -> void;
+    auto update_webgpu() -> void;
 
     glm::vec3 position;
     glm::mat3 rotation;
@@ -32,13 +32,14 @@ class Camera {
   private:
     struct {
         bool initialized;
-        GLuint ubo; // uniform buffer object, structure below
+        wgpu::Device device;
+        wgpu::Buffer uniform_buffer; // structure below
         /*
          * mat4 view matrix (world-to-camera)
          * mat4 inv view matrix (camera-to-world)
          * float fovy (radians)
          */
-    } gl;
+    } wgpu;
 };
 
 } // namespace vxng::camera

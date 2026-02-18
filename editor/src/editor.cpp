@@ -1,6 +1,5 @@
 #include "editor.h"
-
-// #include "vxng/renderer.h"
+#include "SDL3/SDL_video.h"
 
 #include <sdl3webgpu.h>
 
@@ -8,8 +7,8 @@
 #include <iostream>
 
 Editor::Editor()
-    // : renderer(), viewport_camera()
-    = default;
+    : renderer() //, viewport_camera()
+{};
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -137,20 +136,18 @@ auto Editor::init() -> int {
 
     this->wgpu.surface.Configure(&config);
 
+    if (!this->renderer.init_webgpu(&this->wgpu.device)) {
+        return EXIT_FAILURE;
+    }
+
+    // set initial renderer size
+    int width, height;
+    SDL_GetWindowSize(sdl_window, &width, &height);
+    this->renderer.resize(width, height);
+
     /*
         // TODO: webgpuize
-
-        // setup our renderer
-        if (!this->renderer.init_gl()) {
-            return EXIT_FAILURE;
-        }
         this->viewport_camera.init_gl();
-
-        // set initial renderer size
-        int width, height;
-        SDL_GetWindowSize(sdl_window, &width, &height);
-        this->renderer.resize(width, height);
-
         this->renderer.set_active_camera(&this->viewport_camera);
     */
 
@@ -193,17 +190,20 @@ auto Editor::draw_to_surface() -> void {
     renderPassColorAttachment.resolveTarget = nullptr;
     renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
-    renderPassColorAttachment.clearValue = wgpu::Color{0.9, 0.1, 0.2, 1.0};
+    renderPassColorAttachment.clearValue = wgpu::Color{0.0, 0.0, 0.0, 1.0};
 
     renderPassDesc.colorAttachmentCount = 1;
     renderPassDesc.colorAttachments = &renderPassColorAttachment;
     renderPassDesc.depthStencilAttachment = nullptr;
     renderPassDesc.timestampWrites = nullptr;
 
-    // Create the render pass and end it immediately (we only clear the screen
-    // but do not draw anything)
+    // render pass!
     wgpu::RenderPassEncoder renderPass =
         encoder.BeginRenderPass(&renderPassDesc);
+
+    // delegate this to our vxng::Renderer
+    renderer.render(renderPass);
+
     renderPass.End();
 
     // Finally encode and submit the render pass

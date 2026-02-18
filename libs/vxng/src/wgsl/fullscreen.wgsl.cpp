@@ -43,6 +43,9 @@ fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let ndcCoords = input.texcoords * 2.0 - 1.0;
 
+    return vec4f(input.texcoords, 1.0, 1.0);
+
+    /*
     // Compute ray direction in view space
     let tanHalfFov = tan(camera.fovYRad * 0.5);
     let rayDirView = normalize(vec3<f32>(
@@ -61,6 +64,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let rayOrigin = camera.invViewMat[3].xyz;
 
     return vec4<f32>(rayDirWorld, 1.0);
+    */
 }
 )wgsl";
 

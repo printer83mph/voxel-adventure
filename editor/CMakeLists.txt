@@ -14,7 +14,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        # libs::vxng
+        libs::vxng
         glm::glm
         SDL3::SDL3
         dawn::webgpu_dawn

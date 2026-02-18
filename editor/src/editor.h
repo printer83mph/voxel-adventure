@@ -1,7 +1,7 @@
 #pragma once
 
 // #include "vxng/orbit-camera.h"
-// #include "vxng/renderer.h"
+#include "vxng/renderer.h"
 
 #include <SDL3/SDL.h>
 #include <webgpu/webgpu_cpp.h>
@@ -22,7 +22,7 @@ class Editor {
         wgpu::Surface surface;
     } wgpu;
 
-    // vxng::Renderer renderer;
+    vxng::Renderer renderer;
     // vxng::camera::OrbitCamera viewport_camera;
 
     auto draw_to_surface() -> void;

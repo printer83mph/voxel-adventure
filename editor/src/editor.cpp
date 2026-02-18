@@ -13,9 +13,6 @@
 
 #include <cstdlib>
 
-#define OPENGL_MAJOR_VERSION 4
-#define OPENGL_MINOR_VERSION 1
-
 Editor::Editor()
     // : renderer(), viewport_camera()
     = default;
@@ -26,43 +23,89 @@ auto Editor::init() -> int {
         return EXIT_FAILURE;
     };
 
-    // use OpenGL at specified version
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, OPENGL_MAJOR_VERSION);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, OPENGL_MINOR_VERSION);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_CORE);
-
     // create window
-    this->sdl_window = SDL_CreateWindow(
-        "My Funny Window", 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    this->sdl_window = SDL_CreateWindow("My Funny Window", 800, 600, 0
+                                        // SDL_WINDOW_RESIZABLE
+    );
     if (!sdl_window) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM,
                      "Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    // setup webgpu
-    this->wgpu.instance = WGPUInstance();
-    this->wgpu.surface =
-        SDL_GetWGPUSurface(this->wgpu.instance, this->sdl_window);
+    // setup webgpu instance
+    wgpu::InstanceDescriptor instance_desc;
+    instance_desc.nextInChain = nullptr;
+    wgpu::Instance wgpu_instance = wgpu::createInstance(instance_desc);
 
-    // setup our renderer
-    if (!this->renderer.init_gl()) {
-        return EXIT_FAILURE;
-    }
-    this->viewport_camera.init_gl();
+    // surface should be fully configured for us
+    this->wgpu.surface = SDL_GetWGPUSurface(wgpu_instance, this->sdl_window);
 
-    // set initial renderer size
-    int width, height;
-    SDL_GetWindowSize(sdl_window, &width, &height);
-    this->renderer.resize(width, height);
+    // request adapter
+    wgpu::RequestAdapterOptions adapter_options;
+    adapter_options.nextInChain = nullptr;
+    adapter_options.compatibleSurface = this->wgpu.surface;
+    auto adapter = wgpu_instance.requestAdapter(adapter_options);
 
-    this->renderer.set_active_camera(&this->viewport_camera);
+    wgpu_instance.release();
+
+    // request device from adapter
+    wgpu::DeviceDescriptor device_desc;
+    device_desc.nextInChain = nullptr;
+    device_desc.label = "My Device";
+    device_desc.requiredFeatureCount = 0;
+    device_desc.requiredLimits = nullptr;
+    device_desc.defaultQueue.nextInChain = nullptr;
+    device_desc.defaultQueue.label = "The default queue";
+    device_desc.deviceLostCallback = [](WGPUDeviceLostReason reason,
+                                        char const *message,
+                                        void * /* pUserData */) {
+        std::cout << "Device lost: reason " << reason;
+        if (message)
+            std::cout << " (" << message << ")";
+        std::cout << std::endl;
+    };
+    this->wgpu.device = adapter.requestDevice(device_desc);
+
+    auto onDeviceError = [](wgpu::ErrorType type, char const *message) {
+        std::cout << "Uncaptured device error: type " << type;
+        if (message)
+            std::cout << " (" << message << ")";
+        std::cout << std::endl;
+    };
+    this->wgpu.device.setUncapturedErrorCallback(onDeviceError);
+
+    // get queue from device
+    this->wgpu.queue = this->wgpu.device.getQueue();
+
+    /*
+        // TODO: webgpuize
+
+        // setup our renderer
+        if (!this->renderer.init_gl()) {
+            return EXIT_FAILURE;
+        }
+        this->viewport_camera.init_gl();
+
+        // set initial renderer size
+        int width, height;
+        SDL_GetWindowSize(sdl_window, &width, &height);
+        this->renderer.resize(width, height);
+
+        this->renderer.set_active_camera(&this->viewport_camera);
+    */
+
+    adapter.release();
 
     return 0;
 }
 
-Editor::~Editor() { SDL_Quit(); }
+Editor::~Editor() {
+    if (this->wgpu.surface)
+        this->wgpu.surface.unconfigure();
+
+    SDL_Quit();
+}
 
 auto Editor::loop() -> void {
     bool quit = false;
@@ -97,9 +140,6 @@ auto Editor::loop() -> void {
         // glClearColor(0.f, 0.f, 0.f, 1.f);
         // glClear(GL_COLOR_BUFFER_BIT);
         // this->renderer.render();
-
-        // update screen
-        SDL_GL_SwapWindow(this->sdl_window);
     }
 }
 

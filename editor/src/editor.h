@@ -18,7 +18,8 @@ class Editor {
   private:
     SDL_Window *sdl_window;
     struct {
-        wgpu::Instance instance;
+        wgpu::Device device;
+        wgpu::Queue queue;
         wgpu::Surface surface;
     } wgpu;
 

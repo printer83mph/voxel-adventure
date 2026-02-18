@@ -16,8 +16,8 @@ namespace vxng {
 
 Renderer::Renderer() {};
 Renderer::~Renderer() {
-    // WebGPU objects are automatically released when their handles go out of
-    // scope
+    // WebGPU objects are automatically released when their reference counted
+    // handles all go out of scope
 };
 
 typedef struct WgslGlobalsUniforms {
@@ -30,7 +30,7 @@ typedef struct WgslCameraUniforms {
     float fovYRad;
 } WgslCameraUniforms;
 
-auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
+auto Renderer::init_webgpu(wgpu::Device device) -> bool {
 
     // create uniform buffers
     wgpu::Buffer globals_buffer, camera_buffer;
@@ -40,14 +40,14 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
         globals_desc.size = 4;
         globals_desc.usage =
             wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
-        globals_buffer = device->CreateBuffer(&globals_desc);
+        globals_buffer = device.CreateBuffer(&globals_desc);
 
         wgpu::BufferDescriptor camera_desc;
         camera_desc.label = "Camera uniform buffer";
         camera_desc.size = 144;
         camera_desc.usage =
             wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
-        camera_buffer = device->CreateBuffer(&camera_desc);
+        camera_buffer = device.CreateBuffer(&camera_desc);
     }
 
     // create bind group layout for shaders
@@ -71,7 +71,7 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
         bgl_desc.label = "Render uniforms binding group";
         bgl_desc.entryCount = 2;
         bgl_desc.entries = &bgl_entries[0];
-        bind_group_layout = device->CreateBindGroupLayout(&bgl_desc);
+        bind_group_layout = device.CreateBindGroupLayout(&bgl_desc);
     }
 
     // create bind groups for shaders
@@ -95,7 +95,7 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
         bg_desc.layout = bind_group_layout;
         bg_desc.entryCount = 2;
         bg_desc.entries = &bg_entries[0];
-        bind_group = device->CreateBindGroup(&bg_desc);
+        bind_group = device.CreateBindGroup(&bg_desc);
     }
 
     // create shader module
@@ -108,7 +108,7 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
         shader_desc.nextInChain = &wgsl_source;
         shader_desc.label = "Fullscreen raymarching shader";
 
-        shader_module = device->CreateShaderModule(&shader_desc);
+        shader_module = device.CreateShaderModule(&shader_desc);
         if (!shader_module) {
             std::cout << "Failed to create shader module!" << std::endl;
             return false;
@@ -122,7 +122,7 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
         layout_desc.label = "Render pipeline layout";
         layout_desc.bindGroupLayoutCount = 1;
         layout_desc.bindGroupLayouts = &bind_group_layout;
-        pipeline_layout = device->CreatePipelineLayout(&layout_desc);
+        pipeline_layout = device.CreatePipelineLayout(&layout_desc);
     }
 
     // create render pipeline
@@ -178,7 +178,7 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
         multisample_state.alphaToCoverageEnabled = false;
         pipeline_desc.multisample = multisample_state;
 
-        render_pipeline = device->CreateRenderPipeline(&pipeline_desc);
+        render_pipeline = device.CreateRenderPipeline(&pipeline_desc);
         if (!render_pipeline) {
             std::cerr << "Failed to create render pipeline!" << std::endl;
             return false;
@@ -188,6 +188,7 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
     // store all objects in member struct
     this->wgpu.initialized = true;
     this->wgpu.device = device;
+    this->wgpu.queue = device.GetQueue();
     this->wgpu.globals_uniforms_buffer = globals_buffer;
     this->wgpu.camera_uniforms_buffer = camera_buffer;
     this->wgpu.bind_group_layout = bind_group_layout;
@@ -201,8 +202,8 @@ auto Renderer::init_webgpu(wgpu::Device *device) -> bool {
 
 auto Renderer::resize(int width, int height) -> void {
     float aspect = (float)width / (float)height;
-    this->wgpu.device->GetQueue().WriteBuffer(
-        this->wgpu.globals_uniforms_buffer, 0, &aspect, sizeof(float));
+    this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 0, &aspect,
+                                 sizeof(float));
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
@@ -217,15 +218,15 @@ auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {
 }
 */
 
-auto Renderer::render(wgpu::RenderPassEncoder &renderPass) const -> void {
+auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
     // set the render pipeline
-    renderPass.SetPipeline(this->wgpu.render_pipeline);
+    render_pass.SetPipeline(this->wgpu.render_pipeline);
 
     // bind the uniform bind group
-    renderPass.SetBindGroup(0, this->wgpu.bind_group);
+    render_pass.SetBindGroup(0, this->wgpu.bind_group);
 
     // draw fullscreen triangle (3 vertices, 1 instance)
-    renderPass.Draw(3, 1, 0, 0);
+    render_pass.Draw(3, 1, 0, 0);
 };
 
 } // namespace vxng

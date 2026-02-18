@@ -16,16 +16,17 @@ class Renderer {
     ~Renderer();
 
     /** Sets up program + shader bindings */
-    auto init_webgpu(wgpu::Device *device) -> bool;
+    auto init_webgpu(wgpu::Device device) -> bool;
     auto resize(int width, int height) -> void;
     auto set_scene(vxng::scene::Scene const *scene) -> void;
     // auto set_active_camera(const vxng::camera::Camera *camera) -> void;
-    auto render(wgpu::RenderPassEncoder &renderPass) const -> void;
+    auto render(wgpu::RenderPassEncoder &render_pass) const -> void;
 
   private:
     struct {
         bool initialized;
-        wgpu::Device *device;
+        wgpu::Device device;
+        wgpu::Queue queue;
         wgpu::Buffer globals_uniforms_buffer, camera_uniforms_buffer;
         wgpu::BindGroupLayout bind_group_layout;
         wgpu::BindGroup bind_group;

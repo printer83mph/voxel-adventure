@@ -131,7 +131,7 @@ auto Editor::init() -> int {
 
     // ok now we init members!
 
-    if (!this->renderer.init_webgpu(&this->wgpu.device)) {
+    if (!this->renderer.init_webgpu(this->wgpu.device)) {
         return EXIT_FAILURE;
     }
 

@@ -38,6 +38,7 @@ class Renderer {
     } wgpu;
 
     const vxng::camera::Camera *active_camera;
+    const vxng::scene::Scene *active_scene;
 };
 
 } // namespace vxng

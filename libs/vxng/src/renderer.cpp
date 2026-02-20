@@ -203,7 +203,7 @@ auto Renderer::resize(int width, int height) -> void {
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
-    throw not_implemented_error();
+    this->active_scene = scene;
 };
 
 auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {

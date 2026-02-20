@@ -4,13 +4,17 @@
 
 #include <memory>
 
+#define CHUNK_SCALE 4.0
+#define CHUNK_RESOLUTION 512
+
 namespace vxng::scene {
 
 Scene::Scene() {}
 Scene::~Scene() {}
 
 auto Scene::init_webgpu(wgpu::Device device) -> void {
-    auto origin_chunk = std::make_unique<Chunk>(glm::vec3(0), 4.0, 512);
+    auto origin_chunk =
+        std::make_unique<Chunk>(glm::vec3(0), CHUNK_SCALE, CHUNK_RESOLUTION);
     origin_chunk->init_webgpu(device);
 
     this->chunks[glm::ivec3(0)] = std::move(origin_chunk);

@@ -1,6 +1,7 @@
 #include "chunk.h"
 #include "webgpu/webgpu_cpp.h"
 
+#include <memory>
 #include <queue>
 #include <vector>
 
@@ -11,7 +12,23 @@ wgpu::BindGroupLayout Chunk::bindgroup_layout = nullptr;
 bool Chunk::bindgroup_layout_created = false;
 
 Chunk::Chunk(glm::vec3 pos, float scale, int resolution)
-    : position(pos), scale(scale), resolution(resolution) {};
+    : position(pos), scale(scale), resolution(resolution) {
+    // TEMP: setup hardcoded scene
+    this->root_node = std::make_unique<OctreeNode>();
+    auto &root = this->root_node;
+
+    root->is_leaf = false;
+    root->children[0] = std::make_unique<OctreeNode>();
+    root->children[7] = std::make_unique<OctreeNode>();
+    auto &leaf1 = root->children[0];
+    auto &leaf2 = root->children[7];
+
+    leaf1->is_leaf = true;
+    leaf1->leaf_data.color = {200, 100, 0, 255};
+    leaf2->is_leaf = true;
+    leaf2->leaf_data.color = {0, 100, 200, 255};
+};
+
 Chunk::~Chunk() {
     if (!this->wgpu.initialized)
         return;
@@ -198,19 +215,17 @@ auto Chunk::build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
         gpu_node.voxel_data_idx = 0;
 
         if (node->is_leaf) {
-            // leaf -> child_mask stays 0. Store voxel data if solid.
-            if (node->leaf_is_solid) {
-                gpu_node.voxel_data_idx =
-                    static_cast<uint32_t>(voxel_datas->size());
+            // leaf -> child_mask stays 0
+            gpu_node.voxel_data_idx =
+                static_cast<uint32_t>(voxel_datas->size());
 
-                auto c = node->leaf_data.color;
-                GPUVoxelData vdata{};
-                vdata.color_packed = (static_cast<uint32_t>(c.r) << 0) |
-                                     (static_cast<uint32_t>(c.g) << 8) |
-                                     (static_cast<uint32_t>(c.b) << 16) |
-                                     (static_cast<uint32_t>(c.a) << 24);
-                voxel_datas->push_back(vdata);
-            }
+            auto c = node->leaf_data.color;
+            GPUVoxelData vdata{};
+            vdata.color_packed = (static_cast<uint32_t>(c.r) << 0) |
+                                 (static_cast<uint32_t>(c.g) << 8) |
+                                 (static_cast<uint32_t>(c.b) << 16) |
+                                 (static_cast<uint32_t>(c.a) << 24);
+            voxel_datas->push_back(vdata);
         } else {
             // internal node -> make child_mask from non-null children.
             for (int i = 0; i < 8; i++) {

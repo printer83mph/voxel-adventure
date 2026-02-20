@@ -14,10 +14,7 @@ typedef struct VoxelData {
 
 typedef struct OctreeNode {
     bool is_leaf;
-
-    bool leaf_is_solid;
     VoxelData leaf_data;
-
     std::array<std::unique_ptr<OctreeNode>, 8> children;
 } OctreeNode;
 

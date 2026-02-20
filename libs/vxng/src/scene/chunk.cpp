@@ -37,69 +37,8 @@ Chunk::~Chunk() {
 };
 
 auto Chunk::init_webgpu(wgpu::Device device) -> void {
-    wgpu::Buffer octree_buffer;
-    {
-        wgpu::BufferDescriptor desc;
-        desc.label = "Octree nodes storage buffer";
-        desc.size = sizeof(uint32_t) * 3; // one GPUOctreeNode for now
-        desc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
-        octree_buffer = device.CreateBuffer(&desc);
-    }
-
-    wgpu::Buffer vxdata_buffer;
-    {
-        wgpu::BufferDescriptor desc;
-        desc.label = "Voxel data storage buffer";
-        desc.size = sizeof(uint32_t); // one GPUVoxelData for now
-        desc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
-        vxdata_buffer = device.CreateBuffer(&desc);
-    }
-
-    wgpu::Buffer metadata_buffer;
-    {
-        wgpu::BufferDescriptor desc;
-        desc.label = "Chunk metadata uniform buffer";
-        desc.size = sizeof(GPUChunkMetadata);
-        desc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
-        metadata_buffer = device.CreateBuffer(&desc);
-    }
-
-    wgpu::BindGroup bindgroup;
-    {
-        wgpu::BindGroupEntry entries[3];
-
-        auto &octree_entry = entries[0];
-        octree_entry.binding = 0;
-        octree_entry.buffer = octree_buffer;
-        octree_entry.offset = 0;
-        octree_entry.size = sizeof(uint32_t) * 3;
-
-        auto &vxdata_entry = entries[1];
-        vxdata_entry.binding = 1;
-        vxdata_entry.buffer = vxdata_buffer;
-        vxdata_entry.offset = 0;
-        vxdata_entry.size = sizeof(uint32_t);
-
-        auto &metadata_entry = entries[2];
-        metadata_entry.binding = 2;
-        metadata_entry.buffer = metadata_buffer;
-        metadata_entry.offset = 0;
-        metadata_entry.size = sizeof(GPUChunkMetadata);
-
-        wgpu::BindGroupDescriptor bg_desc;
-        bg_desc.label = "Chunk data bind group";
-        bg_desc.layout = get_bindgroup_layout(device);
-        bg_desc.entryCount = 3;
-        bg_desc.entries = &entries[0];
-        bindgroup = device.CreateBindGroup(&bg_desc);
-    }
-
     this->wgpu.initialized = true;
     this->wgpu.device = device;
-    this->wgpu.octree_buffer = octree_buffer;
-    this->wgpu.vxdata_buffer = vxdata_buffer;
-    this->wgpu.metadata_buffer = metadata_buffer;
-    this->wgpu.bindgroup = bindgroup;
 
     // get starting data to the gpu!
     update_buffers();
@@ -152,24 +91,79 @@ auto Chunk::update_buffers() -> void {
     std::vector<GPUVoxelData> voxel_datas;
 
     // TODO: implement buffer computation from structure
-    // for now: just render one solid cube
+    // for now: just render two leaves
     GPUOctreeNode root;
-    root.child_mask = 0;
-    root.first_child_idx = 0;
+    root.child_mask = (1u << 7) | 1u;
+    root.first_child_idx = 1;
     root.voxel_data_idx = 0;
     octree_nodes.push_back(root);
 
-    GPUVoxelData root_data;
-    root_data.color_packed =
+    GPUOctreeNode firstChild;
+    firstChild.child_mask = 0;
+    firstChild.first_child_idx = 0;
+    firstChild.voxel_data_idx = 0;
+    octree_nodes.push_back(firstChild);
+
+    GPUOctreeNode secondChild;
+    firstChild.child_mask = 0;
+    firstChild.first_child_idx = 0;
+    firstChild.voxel_data_idx = 1;
+    octree_nodes.push_back(secondChild);
+
+    GPUVoxelData first_data;
+    first_data.color_packed =
         (255u << 0) | (0u << 8) | (255u << 16) | (255u << 24); // RGBA magenta
-    voxel_datas.push_back(root_data);
+    voxel_datas.push_back(first_data);
 
-    wgpu::Queue queue = this->wgpu.device.GetQueue();
+    GPUVoxelData second_data;
+    second_data.color_packed =
+        (0u << 0) | (255u << 8) | (0u << 16) | (255u << 24); // RGBA green
+    voxel_datas.push_back(second_data);
 
+    // destroy old buffers (if they exist)
+    if (this->wgpu.octree_buffer) {
+        this->wgpu.octree_buffer.Destroy();
+    }
+    if (this->wgpu.vxdata_buffer) {
+        this->wgpu.vxdata_buffer.Destroy();
+    }
+    if (this->wgpu.metadata_buffer) {
+        this->wgpu.metadata_buffer.Destroy();
+    }
+
+    auto device = this->wgpu.device;
+    auto octree_size = sizeof(GPUOctreeNode) * octree_nodes.size();
+    auto vxdata_size = sizeof(GPUVoxelData) * voxel_datas.size();
+
+    // new buffers time!
+    {
+        wgpu::BufferDescriptor desc;
+        desc.label = "Octree nodes storage buffer";
+        desc.size = octree_size;
+        desc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
+        this->wgpu.octree_buffer = device.CreateBuffer(&desc);
+    }
+    {
+        wgpu::BufferDescriptor desc;
+        desc.label = "Voxel data storage buffer";
+        desc.size = vxdata_size;
+        desc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopyDst;
+        this->wgpu.vxdata_buffer = device.CreateBuffer(&desc);
+    }
+    {
+        wgpu::BufferDescriptor desc;
+        desc.label = "Chunk metadata uniform buffer";
+        desc.size = sizeof(GPUChunkMetadata);
+        desc.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
+        this->wgpu.metadata_buffer = device.CreateBuffer(&desc);
+    }
+
+    // send it over to the gpu
+    wgpu::Queue queue = device.GetQueue();
     queue.WriteBuffer(this->wgpu.octree_buffer, 0, octree_nodes.data(),
-                      sizeof(GPUOctreeNode) * octree_nodes.size());
+                      octree_size);
     queue.WriteBuffer(this->wgpu.vxdata_buffer, 0, voxel_datas.data(),
-                      sizeof(GPUVoxelData) * voxel_datas.size());
+                      vxdata_size);
 
     GPUChunkMetadata metadata;
     metadata.position[0] = this->position.x;
@@ -178,6 +172,36 @@ auto Chunk::update_buffers() -> void {
     metadata.size = this->scale;
     queue.WriteBuffer(this->wgpu.metadata_buffer, 0, &metadata,
                       sizeof(GPUChunkMetadata));
+
+    // bind group (re)creation!
+    {
+        wgpu::BindGroupEntry entries[3];
+
+        auto &octree_entry = entries[0];
+        octree_entry.binding = 0;
+        octree_entry.buffer = this->wgpu.octree_buffer;
+        octree_entry.offset = 0;
+        octree_entry.size = octree_size;
+
+        auto &vxdata_entry = entries[1];
+        vxdata_entry.binding = 1;
+        vxdata_entry.buffer = this->wgpu.vxdata_buffer;
+        vxdata_entry.offset = 0;
+        vxdata_entry.size = vxdata_size;
+
+        auto &metadata_entry = entries[2];
+        metadata_entry.binding = 2;
+        metadata_entry.buffer = this->wgpu.metadata_buffer;
+        metadata_entry.offset = 0;
+        metadata_entry.size = sizeof(GPUChunkMetadata);
+
+        wgpu::BindGroupDescriptor bg_desc;
+        bg_desc.label = "Chunk data bind group";
+        bg_desc.layout = get_bindgroup_layout(device);
+        bg_desc.entryCount = 3;
+        bg_desc.entries = &entries[0];
+        this->wgpu.bindgroup = device.CreateBindGroup(&bg_desc);
+    }
 }
 
 } // namespace vxng::scene

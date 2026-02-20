@@ -1,7 +1,6 @@
 #pragma once
 
-#include "vxng/orbit-camera.h"
-#include "vxng/renderer.h"
+#include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>
 #include <webgpu/webgpu_cpp.h>

@@ -1,5 +1,6 @@
 #include "editor.h"
-#include "vxng/scene.h"
+
+#include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>
 #include <sdl3webgpu.h>

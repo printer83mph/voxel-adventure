@@ -65,9 +65,133 @@ fn raycastAABB(ray: Ray, aabb: AABB) -> f32 {
     return tmin;
 }
 
+// computes child AABB for an octant (0-7) within a parent AABB
+// octant bit layout: bit0 = x, bit1 = y, bit2 = z (0 = low, 1 = high)
+fn childAABB(parent: AABB, octant: u32) -> AABB {
+    let mid = (parent.bounds_min + parent.bounds_max) * 0.5;
+    var child: AABB;
+    child.bounds_min = select(parent.bounds_min, mid, vec3<bool>(
+        (octant & 1u) != 0u,
+        (octant & 2u) != 0u,
+        (octant & 4u) != 0u,
+    ));
+    child.bounds_max = select(mid, parent.bounds_max, vec3<bool>(
+        (octant & 1u) != 0u,
+        (octant & 2u) != 0u,
+        (octant & 4u) != 0u,
+    ));
+    return child;
+}
+
+// unpacks an RGBA8 packed color into a vec4<f32>
+fn unpackColor(packed: u32) -> vec4<f32> {
+    let r = f32(packed & 0xFFu) / 255.0;
+    let g = f32((packed >> 8u) & 0xFFu) / 255.0;
+    let b = f32((packed >> 16u) & 0xFFu) / 255.0;
+    let a = f32((packed >> 24u) & 0xFFu) / 255.0;
+    return vec4<f32>(r, g, b, a);
+}
+
+// stack entry for iterative octree traversal
+// we gotta store bounds since we're not packing that into voxel data
+struct StackEntry {
+    nodeIdx: u32,
+    boundsMin: vec3<f32>,
+    boundsMax: vec3<f32>,
+    nextOctant: u32, // next child octant to visit (0-8, 8 = done)
+}
+
+const MAX_STACK_DEPTH: u32 = 16u;
+const SKY_COLOR = vec4<f32>(0.0);
+
+// traverse octree iteratively, returning the color of the closest hit leaf
+fn traverseOctree(ray: Ray, rootAABB: AABB) -> vec4<f32> {
+    // make sure the ray hits the root AABB at all
+    let rootT = raycastAABB(ray, rootAABB);
+    if (rootT < 0.0) {
+        return SKY_COLOR;
+    }
+
+    var stack: array<StackEntry, 16>;
+    var stackPtr: i32 = 0;
+
+    // push root onto stack
+    stack[0].nodeIdx = 0u;
+    stack[0].boundsMin = rootAABB.bounds_min;
+    stack[0].boundsMax = rootAABB.bounds_max;
+    stack[0].nextOctant = 0u;
+
+    var closestT: f32 = 1e30;
+    var closestColor: vec4<f32> = SKY_COLOR;
+
+    // DFS traversal
+    while (stackPtr >= 0) {
+        let depth = stackPtr;
+        let node = octreeNodes[stack[depth].nodeIdx];
+        var parentBounds: AABB;
+        parentBounds.bounds_min = stack[depth].boundsMin;
+        parentBounds.bounds_max = stack[depth].boundsMax;
+
+        // we know leaf node if childMask == 0
+        if (node.childMask == 0u) {
+            let t = raycastAABB(ray, parentBounds);
+            if (t >= 0.0 && t < closestT) {
+                closestT = t;
+                closestColor = unpackColor(
+                    voxelData[node.voxelDataIdx].colorPacked
+                );
+            }
+            // Pop
+            stackPtr -= 1;
+            continue;
+        }
+
+        // internal node: find next child octant to visit
+        var pushed = false;
+        for (var o = stack[depth].nextOctant; o < 8u; o += 1u) {
+            if ((node.childMask & (1u << o)) == 0u) {
+                continue;
+            }
+
+            let cBounds = childAABB(parentBounds, o);
+            let t = raycastAABB(ray, cBounds);
+
+            // skip any children that are behind the closest known hit
+            // super optimized!!!
+            if (t < 0.0 || t >= closestT) {
+                continue;
+            }
+
+            // record where parent should resume when we come back
+            stack[depth].nextOctant = o + 1u;
+
+            // compute child's index in the contiguous array:
+            // firstChildIdx + number of set bits below bit o
+            let maskBelow = node.childMask & ((1u << o) - 1u);
+            let childOffset = countOneBits(maskBelow);
+            let childIdx = node.firstChildIdx + childOffset;
+
+            // push child
+            stackPtr += 1;
+            stack[stackPtr].nodeIdx = childIdx;
+            stack[stackPtr].boundsMin = cBounds.bounds_min;
+            stack[stackPtr].boundsMax = cBounds.bounds_max;
+            stack[stackPtr].nextOctant = 0u;
+            pushed = true;
+            break;
+        }
+
+        // no more children to visit, pop this node
+        if (!pushed) {
+            stackPtr -= 1;
+        }
+    }
+
+    return closestColor;
+}
+
 @group(0) @binding(0) var<uniform> globals: Globals;
 @group(1) @binding(0) var<uniform> camera: Camera;
-// TODO: we gotta pass these guys in!
 @group(2) @binding(0) var<storage, read> octreeNodes: array<OctreeNode>;
 @group(2) @binding(1) var<storage, read> voxelData: array<VoxelData>;
 @group(2) @binding(2) var<uniform> chunkMetadata: ChunkMetadata;
@@ -97,8 +221,6 @@ fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let ndcCoords = input.texcoords * 2.0 - 1.0;
 
-    // return vec4f(input.texcoords, 1.0, 1.0);
-
     // Compute ray direction in view space
     let tanHalfFov = tan(camera.fovYRad * 0.5);
     let rayDirView = normalize(vec3<f32>(
@@ -117,25 +239,19 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     viewRay.direction = invViewMat3 * rayDirView;
     viewRay.origin = camera.invViewMat[3].xyz;
 
-    // just raycast against root node
-    let rootNode = octreeNodes[0];
+    // setup root AABB from chunk metadata
     let halfSize = chunkMetadata.size * 0.5;
     var rootAABB: AABB;
     rootAABB.bounds_min = chunkMetadata.position - vec3<f32>(halfSize);
     rootAABB.bounds_max = chunkMetadata.position + vec3<f32>(halfSize);
 
-    let t = raycastAABB(viewRay, rootAABB);
-    if (t < 0.0) {
+    // traverse octree!
+    let color = traverseOctree(viewRay, rootAABB);
+    if (color.a == 0.0) {
+        // if no hit, show ray direction as sky
         return vec4<f32>(viewRay.direction, 1.0);
     }
-
-    // i love unpacking color!
-    let packed = voxelData[rootNode.voxelDataIdx].colorPacked;
-    let r = f32(packed & 0xFFu) / 255.0;
-    let g = f32((packed >> 8u) & 0xFFu) / 255.0;
-    let b = f32((packed >> 16u) & 0xFFu) / 255.0;
-    let a = f32((packed >> 24u) & 0xFFu) / 255.0;
-    return vec4<f32>(r, g, b, a);
+    return color;
 }
 )wgsl";
 

@@ -98,16 +98,27 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         -1.0
     ));
 
-    // Transform to world space
+    // Build view ray
     let invViewMat3 = mat3x3<f32>(
         camera.invViewMat[0].xyz,
         camera.invViewMat[1].xyz,
         camera.invViewMat[2].xyz
     );
-    let rayDirWorld = invViewMat3 * rayDirView;
-    let rayOrigin = camera.invViewMat[3].xyz;
+    var viewRay: Ray;
+    viewRay.direction = invViewMat3 * rayDirView;
+    viewRay.origin = camera.invViewMat[3].xyz;
 
-    return vec4<f32>(rayDirWorld, 1.0);
+    // TODO: traverse octree instead of just getting root
+    // let rootNode = octreeNodes[0];
+    var testAABB: AABB;
+    testAABB.bounds_min = vec3<f32>(-1.0);
+    testAABB.bounds_max = vec3<f32>(1.0);
+    let t = raycastAABB(viewRay, testAABB);
+    if (t < 0.0) {
+        return vec4<f32>(viewRay.direction, 1.0);
+    } else {
+        return vec4<f32>(1.0, 0.0, 0.0, 1.0);
+    }
 }
 )wgsl";
 

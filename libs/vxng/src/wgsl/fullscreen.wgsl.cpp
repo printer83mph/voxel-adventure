@@ -15,6 +15,51 @@ struct Camera {
     fovYRad: f32,
 }
 
+struct OctreeNode {
+    childMask: u32,
+    firstChildIdx: u32,
+    voxelDataIdx: u32,
+}
+
+struct VoxelData {
+    colorPacked: u32,
+}
+
+struct Ray {
+    origin: vec3<f32>,
+    direction: vec3<f32>,
+}
+
+struct AABB {
+    bounds_min: vec3<f32>,
+    bounds_max: vec3<f32>,
+}
+
+// from https://github.com/gdbooks/3DCollisions/blob/master/Chapter3/raycast_aabb.md
+// spits out t = distance along ray a collision was found, or -1 if none
+fn raycastAABB(ray: Ray, aabb: AABB) -> f32 {
+    let t1 = (aabb.bounds_min.x - ray.origin.x) / ray.direction.x;
+    let t2 = (aabb.bounds_max.x - ray.origin.x) / ray.direction.x;
+    let t3 = (aabb.bounds_min.y - ray.origin.y) / ray.direction.y;
+    let t4 = (aabb.bounds_max.y - ray.origin.y) / ray.direction.y;
+    let t5 = (aabb.bounds_min.z - ray.origin.z) / ray.direction.z;
+    let t6 = (aabb.bounds_max.z - ray.origin.z) / ray.direction.z;
+    let tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+    let tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+    // if tmax < 0, ray (line) is intersecting AABB, but whole AABB is behind us
+    if (tmax < 0.0) {
+        return -1.0;
+    }
+    // if tmin > tmax, ray doesn't intersect AABB
+    if (tmin > tmax) {
+        return -1.0;
+    }
+    if (tmin < 0.0) {
+        return tmax;
+    }
+    return tmin;
+}
+
 @group(0) @binding(0) var<uniform> globals: Globals;
 @group(1) @binding(0) var<uniform> camera: Camera;
 

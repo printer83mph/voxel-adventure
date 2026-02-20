@@ -9,22 +9,6 @@ namespace vxng::scene {
 wgpu::BindGroupLayout Chunk::bindgroup_layout = nullptr;
 bool Chunk::bindgroup_layout_created = false;
 
-typedef struct GPUOctreeNode {
-    uint32_t child_mask;      // leaf node if this is empty
-    uint32_t first_child_idx; // we can find subsequent child indices
-                              // (contiguous) using bitCount(child_mask)
-    uint32_t voxel_data_idx;
-} GPUOctreeNode;
-
-typedef struct GPUVoxelData {
-    uint32_t color_packed;
-} GPUVoxelData;
-
-typedef struct GPUChunkMetadata {
-    float position[3];
-    float size;
-} GPUChunkMetadata;
-
 Chunk::Chunk(glm::vec3 pos, float scale, int resolution)
     : position(pos), scale(scale), resolution(resolution) {};
 Chunk::~Chunk() {
@@ -90,35 +74,8 @@ auto Chunk::update_buffers() -> void {
     std::vector<GPUOctreeNode> octree_nodes;
     std::vector<GPUVoxelData> voxel_datas;
 
-    // TODO: implement buffer computation from structure
-    // for now: just render two leaves
-    GPUOctreeNode root;
-    root.child_mask = (1u << 7) | 1u;
-    root.first_child_idx = 1;
-    root.voxel_data_idx = 0;
-    octree_nodes.push_back(root);
-
-    GPUOctreeNode firstChild;
-    firstChild.child_mask = 0;
-    firstChild.first_child_idx = 0;
-    firstChild.voxel_data_idx = 0;
-    octree_nodes.push_back(firstChild);
-
-    GPUOctreeNode secondChild;
-    firstChild.child_mask = 0;
-    firstChild.first_child_idx = 0;
-    firstChild.voxel_data_idx = 1;
-    octree_nodes.push_back(secondChild);
-
-    GPUVoxelData first_data;
-    first_data.color_packed =
-        (255u << 0) | (0u << 8) | (255u << 16) | (255u << 24); // RGBA magenta
-    voxel_datas.push_back(first_data);
-
-    GPUVoxelData second_data;
-    second_data.color_packed =
-        (0u << 0) | (255u << 8) | (0u << 16) | (255u << 24); // RGBA green
-    voxel_datas.push_back(second_data);
+    // fill up buffers
+    build_buffer_data(&octree_nodes, &voxel_datas);
 
     // destroy old buffers (if they exist)
     if (this->wgpu.octree_buffer) {
@@ -202,6 +159,40 @@ auto Chunk::update_buffers() -> void {
         bg_desc.entries = &entries[0];
         this->wgpu.bindgroup = device.CreateBindGroup(&bg_desc);
     }
+}
+
+auto Chunk::build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
+                              std::vector<GPUVoxelData> *voxel_datas) const
+    -> void {
+    // TODO: build ye buffer data from structure
+    // for now: just render two leaves
+    GPUOctreeNode root;
+    root.child_mask = (1u << 7) | 1u;
+    root.first_child_idx = 1;
+    root.voxel_data_idx = 0;
+    octree_nodes->push_back(root);
+
+    GPUOctreeNode firstChild;
+    firstChild.child_mask = 0;
+    firstChild.first_child_idx = 0;
+    firstChild.voxel_data_idx = 0;
+    octree_nodes->push_back(firstChild);
+
+    GPUOctreeNode secondChild;
+    secondChild.child_mask = 0;
+    secondChild.first_child_idx = 0;
+    secondChild.voxel_data_idx = 1;
+    octree_nodes->push_back(secondChild);
+
+    GPUVoxelData first_data;
+    first_data.color_packed =
+        (255u << 0) | (0u << 8) | (255u << 16) | (255u << 24); // RGBA magenta
+    voxel_datas->push_back(first_data);
+
+    GPUVoxelData second_data;
+    second_data.color_packed =
+        (0u << 0) | (255u << 8) | (0u << 16) | (255u << 24); // RGBA green
+    voxel_datas->push_back(second_data);
 }
 
 } // namespace vxng::scene

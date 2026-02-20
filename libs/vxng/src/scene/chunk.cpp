@@ -64,10 +64,6 @@ auto Chunk::init_webgpu(wgpu::Device device) -> void {
         metadata_buffer = device.CreateBuffer(&desc);
     }
 
-    // run static BGL setup (only once)
-    if (!Chunk::bindgroup_layout_created)
-        Chunk::create_bindgroup_layout(device);
-
     wgpu::BindGroup bindgroup;
     {
         wgpu::BindGroupEntry entries[3];
@@ -92,7 +88,7 @@ auto Chunk::init_webgpu(wgpu::Device device) -> void {
 
         wgpu::BindGroupDescriptor bg_desc;
         bg_desc.label = "Chunk data bind group";
-        bg_desc.layout = bindgroup_layout;
+        bg_desc.layout = get_bindgroup_layout(device);
         bg_desc.entryCount = 3;
         bg_desc.entries = &entries[0];
         bindgroup = device.CreateBindGroup(&bg_desc);
@@ -140,7 +136,15 @@ auto Chunk::create_bindgroup_layout(wgpu::Device device) -> void {
     bgl_descriptor.entries = &bgl_entries[0];
 
     bindgroup_layout = device.CreateBindGroupLayout(&bgl_descriptor);
-    bindgroup_layout_created = true;
+}
+
+auto Chunk::get_bindgroup_layout(wgpu::Device device) -> wgpu::BindGroupLayout {
+    if (!bindgroup_layout_created) {
+        create_bindgroup_layout(device);
+        bindgroup_layout_created = true;
+    }
+
+    return bindgroup_layout;
 }
 
 auto Chunk::update_buffers() -> void {

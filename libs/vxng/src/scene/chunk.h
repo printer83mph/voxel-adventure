@@ -16,6 +16,10 @@ class Chunk {
     auto init_webgpu(wgpu::Device device) -> void;
     auto get_bindgroup() const -> wgpu::BindGroup;
 
+    /** runs create_bindgroup_layout if not bindgroup_layout_created */
+    static auto get_bindgroup_layout(wgpu::Device device)
+        -> wgpu::BindGroupLayout;
+
   private:
     static wgpu::BindGroupLayout bindgroup_layout; // shared bindgroup layout
     static bool bindgroup_layout_created;

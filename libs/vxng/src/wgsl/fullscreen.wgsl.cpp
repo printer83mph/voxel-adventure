@@ -62,6 +62,9 @@ fn raycastAABB(ray: Ray, aabb: AABB) -> f32 {
 
 @group(0) @binding(0) var<uniform> globals: Globals;
 @group(1) @binding(0) var<uniform> camera: Camera;
+// TODO: we gotta pass these guys in!
+// @group(2) @binding(0) var<storage, read> octreeNodes: array<OctreeNode>;
+// @group(2) @binding(1) var<storage, read> voxelData: array<VoxelData>;
 
 // Vertex shader output / Fragment shader input
 struct VertexOutput {

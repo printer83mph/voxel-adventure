@@ -65,6 +65,62 @@ fn raycastAABB(ray: Ray, aabb: AABB) -> f32 {
     return tmin;
 }
 
+struct RaycastHitInfo {
+    t: f32,
+    normal: vec3<f32>,
+}
+
+// same as raycastAABB but also computes the surface normal at the hit point
+fn raycastAABBWithNormal(ray: Ray, aabb: AABB) -> RaycastHitInfo {
+    var result: RaycastHitInfo;
+    result.t = -1.0;
+    result.normal = vec3<f32>(0.0);
+
+    let t1 = (aabb.bounds_min.x - ray.origin.x) / ray.direction.x;
+    let t2 = (aabb.bounds_max.x - ray.origin.x) / ray.direction.x;
+    let t3 = (aabb.bounds_min.y - ray.origin.y) / ray.direction.y;
+    let t4 = (aabb.bounds_max.y - ray.origin.y) / ray.direction.y;
+    let t5 = (aabb.bounds_min.z - ray.origin.z) / ray.direction.z;
+    let t6 = (aabb.bounds_max.z - ray.origin.z) / ray.direction.z;
+
+    let tminX = min(t1, t2);
+    let tminY = min(t3, t4);
+    let tminZ = min(t5, t6);
+    let tmin = max(max(tminX, tminY), tminZ);
+    let tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+    if (tmax < 0.0 || tmin > tmax) {
+        return result;
+    }
+
+    if (tmin < 0.0) {
+        // ray origin is inside the AABB, hit is the exit face
+        result.t = tmax;
+        let tmaxX = max(t1, t2);
+        let tmaxY = max(t3, t4);
+        let tmaxZ = max(t5, t6);
+        if (tmax == tmaxX) {
+            result.normal = vec3<f32>(sign(ray.direction.x), 0.0, 0.0);
+        } else if (tmax == tmaxY) {
+            result.normal = vec3<f32>(0.0, sign(ray.direction.y), 0.0);
+        } else {
+            result.normal = vec3<f32>(0.0, 0.0, sign(ray.direction.z));
+        }
+    } else {
+        // normal is on the entry face, pointing against the ray direction
+        result.t = tmin;
+        if (tmin == tminX) {
+            result.normal = vec3<f32>(-sign(ray.direction.x), 0.0, 0.0);
+        } else if (tmin == tminY) {
+            result.normal = vec3<f32>(0.0, -sign(ray.direction.y), 0.0);
+        } else {
+            result.normal = vec3<f32>(0.0, 0.0, -sign(ray.direction.z));
+        }
+    }
+
+    return result;
+}
+
 // computes child AABB for an octant (0-7) within a parent AABB
 // octant bit layout: bit0 = x, bit1 = y, bit2 = z (0 = low, 1 = high)
 fn childAABB(parent: AABB, octant: u32) -> AABB {
@@ -104,12 +160,23 @@ struct StackEntry {
 const MAX_STACK_DEPTH: u32 = 16u;
 const SKY_COLOR = vec4<f32>(0.0);
 
-// traverse octree iteratively, returning the color of the closest hit leaf
-fn traverseOctree(ray: Ray, rootAABB: AABB) -> vec4<f32> {
+struct TraversalResult {
+    color: vec4<f32>,
+    normal: vec3<f32>,
+    t: f32,
+}
+
+// traverse octree iteratively, returning the color and normal of the closest hit leaf
+fn traverseOctree(ray: Ray, rootAABB: AABB) -> TraversalResult {
+    var miss: TraversalResult;
+    miss.color = SKY_COLOR;
+    miss.normal = vec3<f32>(0.0);
+    miss.t = -1.0;
+
     // make sure the ray hits the root AABB at all
     let rootT = raycastAABB(ray, rootAABB);
     if (rootT < 0.0) {
-        return SKY_COLOR;
+        return miss;
     }
 
     var stack: array<StackEntry, 16>;
@@ -123,6 +190,7 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> vec4<f32> {
 
     var closestT: f32 = 1e30;
     var closestColor: vec4<f32> = SKY_COLOR;
+    var closestNormal: vec3<f32> = vec3<f32>(0.0);
 
     // DFS traversal
     while (stackPtr >= 0) {
@@ -134,9 +202,10 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> vec4<f32> {
 
         // we know leaf node if childMask == 0
         if (node.childMask == 0u) {
-            let t = raycastAABB(ray, parentBounds);
-            if (t >= 0.0 && t < closestT) {
-                closestT = t;
+            let hit = raycastAABBWithNormal(ray, parentBounds);
+            if (hit.t >= 0.0 && hit.t < closestT) {
+                closestT = hit.t;
+                closestNormal = hit.normal;
                 closestColor = unpackColor(
                     voxelData[node.voxelDataIdx].colorPacked
                 );
@@ -187,7 +256,11 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> vec4<f32> {
         }
     }
 
-    return closestColor;
+    var result: TraversalResult;
+    result.color = closestColor;
+    result.normal = closestNormal;
+    result.t = closestT;
+    return result;
 }
 
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -246,12 +319,18 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     rootAABB.bounds_max = chunkMetadata.position + vec3<f32>(halfSize);
 
     // traverse octree!
-    let color = traverseOctree(viewRay, rootAABB);
-    if (color.a == 0.0) {
+    let result = traverseOctree(viewRay, rootAABB);
+    if (result.color.a == 0.0) {
         // if no hit, show ray direction as sky
         return vec4<f32>(viewRay.direction, 1.0);
     }
-    return color;
+
+    // simple half lambert lighting
+    let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
+    let ambient = 0.2;
+    let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0);
+    let lighting = ambient + (1.0 - ambient) * diffuse;
+    return vec4<f32>(result.color.rgb * lighting, result.color.a);
 }
 )wgsl";
 

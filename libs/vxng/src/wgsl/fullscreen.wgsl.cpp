@@ -117,17 +117,25 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     viewRay.direction = invViewMat3 * rayDirView;
     viewRay.origin = camera.invViewMat[3].xyz;
 
-    // TODO: traverse octree instead of just getting root
-    // let rootNode = octreeNodes[0];
-    var testAABB: AABB;
-    testAABB.bounds_min = vec3<f32>(-1.0);
-    testAABB.bounds_max = vec3<f32>(1.0);
-    let t = raycastAABB(viewRay, testAABB);
+    // just raycast against root node
+    let rootNode = octreeNodes[0];
+    let halfSize = chunkMetadata.size * 0.5;
+    var rootAABB: AABB;
+    rootAABB.bounds_min = chunkMetadata.position - vec3<f32>(halfSize);
+    rootAABB.bounds_max = chunkMetadata.position + vec3<f32>(halfSize);
+
+    let t = raycastAABB(viewRay, rootAABB);
     if (t < 0.0) {
         return vec4<f32>(viewRay.direction, 1.0);
-    } else {
-        return vec4<f32>(1.0, 0.0, 0.0, 1.0);
     }
+
+    // i love unpacking color!
+    let packed = voxelData[rootNode.voxelDataIdx].colorPacked;
+    let r = f32(packed & 0xFFu) / 255.0;
+    let g = f32((packed >> 8u) & 0xFFu) / 255.0;
+    let b = f32((packed >> 16u) & 0xFFu) / 255.0;
+    let a = f32((packed >> 24u) & 0xFFu) / 255.0;
+    return vec4<f32>(r, g, b, a);
 }
 )wgsl";
 

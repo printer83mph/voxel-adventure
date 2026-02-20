@@ -8,6 +8,32 @@
 
 namespace vxng::scene {
 
+typedef struct VoxelData {
+    glm::u8vec4 color; // so much memory eek
+} VoxelData;
+
+typedef struct OctreeNode {
+    bool is_leaf;
+    VoxelData leaf_data;
+    std::array<std::unique_ptr<OctreeNode>, 8> children;
+} OctreeNode;
+
+typedef struct GPUOctreeNode {
+    uint32_t child_mask;      // leaf node if this is empty
+    uint32_t first_child_idx; // we can find subsequent child indices
+                              // (contiguous) using bitCount(child_mask)
+    uint32_t voxel_data_idx;
+} GPUOctreeNode;
+
+typedef struct GPUVoxelData {
+    uint32_t color_packed;
+} GPUVoxelData;
+
+typedef struct GPUChunkMetadata {
+    float position[3];
+    float size;
+} GPUChunkMetadata;
+
 class Chunk {
   public:
     Chunk(glm::vec3 pos, float scale, int resolution);
@@ -27,19 +53,9 @@ class Chunk {
     static auto create_bindgroup_layout(wgpu::Device device) -> void;
 
     auto update_buffers() -> void;
-
-    typedef struct VoxelData {
-        glm::u8vec4 color; // so much memory eek
-    } VoxelData;
-
-    typedef struct OctreeNode {
-        bool is_leaf;
-
-        bool leaf_is_solid;
-        VoxelData leaf_data;
-
-        std::array<std::unique_ptr<OctreeNode>, 8> children;
-    } OctreeNode;
+    auto build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
+                           std::vector<GPUVoxelData> *voxel_datas) const
+        -> void;
 
     glm::vec3 position;
     float scale;

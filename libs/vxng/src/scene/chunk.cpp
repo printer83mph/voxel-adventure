@@ -1,6 +1,7 @@
 #include "chunk.h"
 #include "webgpu/webgpu_cpp.h"
 
+#include <queue>
 #include <vector>
 
 namespace vxng::scene {
@@ -164,35 +165,75 @@ auto Chunk::update_buffers() -> void {
 auto Chunk::build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
                               std::vector<GPUVoxelData> *voxel_datas) const
     -> void {
-    // TODO: build ye buffer data from structure
-    // for now: just render two leaves
-    GPUOctreeNode root;
-    root.child_mask = (1u << 7) | 1u;
-    root.first_child_idx = 1;
-    root.voxel_data_idx = 0;
-    octree_nodes->push_back(root);
 
-    GPUOctreeNode firstChild;
-    firstChild.child_mask = 0;
-    firstChild.first_child_idx = 0;
-    firstChild.voxel_data_idx = 0;
-    octree_nodes->push_back(firstChild);
+    // guarantee at least one voxel data entry (satisfies minBindingSize)
+    // it will have zero opacity LOL
+    // TODO: this should probably be made more intentionally
+    GPUVoxelData empty_voxel{};
+    empty_voxel.color_packed = 0;
+    voxel_datas->push_back(empty_voxel);
 
-    GPUOctreeNode secondChild;
-    secondChild.child_mask = 0;
-    secondChild.first_child_idx = 0;
-    secondChild.voxel_data_idx = 1;
-    octree_nodes->push_back(secondChild);
+    // if no octree yet, push a single empty leaf node.
+    if (!root_node) {
+        GPUOctreeNode empty_leaf{};
+        empty_leaf.child_mask = 0;
+        empty_leaf.first_child_idx = 0;
+        empty_leaf.voxel_data_idx = 0;
+        octree_nodes->push_back(empty_leaf);
+        return;
+    }
 
-    GPUVoxelData first_data;
-    first_data.color_packed =
-        (255u << 0) | (0u << 8) | (255u << 16) | (255u << 24); // RGBA magenta
-    voxel_datas->push_back(first_data);
+    // bfs, spit out all children contiguous just how the GPU likes it
+    // (first_child_idx + bitcount to get a specific child)
+    std::queue<const OctreeNode *> bfs;
+    bfs.push(root_node.get());
 
-    GPUVoxelData second_data;
-    second_data.color_packed =
-        (0u << 0) | (255u << 8) | (0u << 16) | (255u << 24); // RGBA green
-    voxel_datas->push_back(second_data);
+    while (!bfs.empty()) {
+        const OctreeNode *node = bfs.front();
+        bfs.pop();
+
+        GPUOctreeNode gpu_node{};
+        gpu_node.child_mask = 0;
+        gpu_node.first_child_idx = 0;
+        gpu_node.voxel_data_idx = 0;
+
+        if (node->is_leaf) {
+            // leaf -> child_mask stays 0. Store voxel data if solid.
+            if (node->leaf_is_solid) {
+                gpu_node.voxel_data_idx =
+                    static_cast<uint32_t>(voxel_datas->size());
+
+                auto c = node->leaf_data.color;
+                GPUVoxelData vdata{};
+                vdata.color_packed = (static_cast<uint32_t>(c.r) << 0) |
+                                     (static_cast<uint32_t>(c.g) << 8) |
+                                     (static_cast<uint32_t>(c.b) << 16) |
+                                     (static_cast<uint32_t>(c.a) << 24);
+                voxel_datas->push_back(vdata);
+            }
+        } else {
+            // internal node -> make child_mask from non-null children.
+            for (int i = 0; i < 8; i++) {
+                if (node->children[i]) {
+                    gpu_node.child_mask |= (1u << i);
+                }
+            }
+
+            // children will go after all emitted + queued nodes
+            //   index = (emitted) + (queue size) + 1 (this node)
+            gpu_node.first_child_idx =
+                static_cast<uint32_t>(octree_nodes->size() + bfs.size() + 1);
+
+            // enqueue non-null children in octant order (0-7).
+            for (int i = 0; i < 8; i++) {
+                if (node->children[i]) {
+                    bfs.push(node->children[i].get());
+                }
+            }
+        }
+
+        octree_nodes->push_back(gpu_node);
+    }
 }
 
 } // namespace vxng::scene

@@ -19,6 +19,9 @@ class Scene {
 
     auto init_webgpu(wgpu::Device device) -> void;
 
+    auto get_chunks() const
+        -> const std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> &;
+
   private:
     std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> chunks;
 };

@@ -16,4 +16,9 @@ auto Scene::init_webgpu(wgpu::Device device) -> void {
     this->chunks[glm::ivec3(0)] = std::move(origin_chunk);
 }
 
+auto Scene::get_chunks() const
+    -> const std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> & {
+    return this->chunks;
+}
+
 } // namespace vxng::scene

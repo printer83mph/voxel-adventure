@@ -1,6 +1,6 @@
 #include "vxng/renderer.h"
 
-#include "util.h"
+#include "scene/chunk.h"
 #include "wgsl/shaders.h"
 
 #include <array>
@@ -231,8 +231,12 @@ auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
     render_pass.SetBindGroup(0, this->wgpu.globals_bind_group);
     render_pass.SetBindGroup(1, this->wgpu.camera_bind_group);
 
-    // draw fullscreen triangle (3 vertices, 1 instance)
-    render_pass.Draw(3, 1, 0, 0);
+    for (auto &[coord, chunk] : this->active_scene->get_chunks()) {
+        render_pass.SetBindGroup(2, chunk->get_bindgroup());
+
+        // draw fullscreen triangle (3 vertices, 1 instance)
+        render_pass.Draw(3, 1, 0, 0);
+    }
 };
 
 } // namespace vxng

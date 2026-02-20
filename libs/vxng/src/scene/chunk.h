@@ -14,10 +14,14 @@ class Chunk {
     ~Chunk();
 
     auto init_webgpu(wgpu::Device device) -> void;
-    auto get_octree_buffer() const -> wgpu::Buffer;
-    auto get_voxel_data_buffer() const -> wgpu::Buffer;
+    auto get_bindgroup() const -> wgpu::BindGroup;
 
   private:
+    static wgpu::BindGroupLayout bindgroup_layout; // shared bindgroup layout
+    static bool bindgroup_layout_created;
+    /** should only run this once using `bindgroup_layout_created` */
+    static auto create_bindgroup_layout(wgpu::Device device) -> void;
+
     auto update_buffers() -> void;
 
     typedef struct VoxelData {
@@ -42,8 +46,9 @@ class Chunk {
     struct {
         bool initialized;
         wgpu::Device device;
-        wgpu::Buffer octree_ssbo;
-        wgpu::Buffer vxdata_ssbo;
+        wgpu::Buffer octree_buffer;
+        wgpu::Buffer vxdata_buffer;
+        wgpu::BindGroup bindgroup;
     } wgpu;
 };
 

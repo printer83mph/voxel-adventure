@@ -1,5 +1,7 @@
 #include "editor.h"
 
+#include "vxng/vxng.h"
+
 #include <SDL3/SDL.h>
 #include <sdl3webgpu.h>
 #include <webgpu/webgpu_cpp.h>
@@ -149,6 +151,11 @@ Editor::~Editor() {
 }
 
 auto Editor::run() -> void {
+    auto scene = vxng::scene::Scene();
+    scene.init_webgpu(this->wgpu.device);
+
+    this->renderer.set_scene(&scene);
+
     bool quit = false;
     while (!quit) {
         poll_events(quit);

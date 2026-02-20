@@ -1,6 +1,6 @@
 #include "vxng/renderer.h"
 
-#include "util.h"
+#include "scene/chunk.h"
 #include "wgsl/shaders.h"
 
 #include <array>
@@ -43,6 +43,8 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     // create bind group layouts for shaders
     wgpu::BindGroupLayout globals_bind_group_layout = nullptr;
     wgpu::BindGroupLayout camera_bind_group_layout = nullptr;
+    wgpu::BindGroupLayout chunk_bind_group_layout =
+        scene::Chunk::get_bindgroup_layout(device);
     {
         // globals bind group layout (group 0)
         wgpu::BindGroupLayoutEntry globals_layout_entry;
@@ -110,12 +112,13 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     // create pipeline layout
     wgpu::PipelineLayout pipeline_layout = nullptr;
     {
-        std::array<wgpu::BindGroupLayout, 2> bind_group_layouts = {
-            globals_bind_group_layout, camera_bind_group_layout};
+        std::array<wgpu::BindGroupLayout, 3> bind_group_layouts = {
+            globals_bind_group_layout, camera_bind_group_layout,
+            chunk_bind_group_layout};
 
         wgpu::PipelineLayoutDescriptor layout_desc;
         layout_desc.label = "Render pipeline layout";
-        layout_desc.bindGroupLayoutCount = 2;
+        layout_desc.bindGroupLayoutCount = bind_group_layouts.size();
         layout_desc.bindGroupLayouts = bind_group_layouts.data();
         pipeline_layout = device.CreatePipelineLayout(&layout_desc);
     }
@@ -203,7 +206,7 @@ auto Renderer::resize(int width, int height) -> void {
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
-    throw not_implemented_error();
+    this->active_scene = scene;
 };
 
 auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {
@@ -231,8 +234,12 @@ auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
     render_pass.SetBindGroup(0, this->wgpu.globals_bind_group);
     render_pass.SetBindGroup(1, this->wgpu.camera_bind_group);
 
-    // draw fullscreen triangle (3 vertices, 1 instance)
-    render_pass.Draw(3, 1, 0, 0);
+    for (auto &[coord, chunk] : this->active_scene->get_chunks()) {
+        render_pass.SetBindGroup(2, chunk->get_bindgroup());
+
+        // draw fullscreen triangle (3 vertices, 1 instance)
+        render_pass.Draw(3, 1, 0, 0);
+    }
 };
 
 } // namespace vxng

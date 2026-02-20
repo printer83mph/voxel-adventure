@@ -24,6 +24,7 @@ class Editor {
 
     vxng::Renderer renderer;
     vxng::camera::OrbitCamera viewport_camera;
+    vxng::scene::Scene scene;
 
     auto draw_to_surface() -> void;
     auto get_next_surface_texture_view() -> wgpu::TextureView;
@@ -32,5 +33,6 @@ class Editor {
 
     auto poll_events(bool &quit) -> void;
     auto handle_resize(int width, int height) -> void;
+    auto handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void;
     auto handle_mouse_motion(SDL_MouseMotionEvent event) -> void;
 };

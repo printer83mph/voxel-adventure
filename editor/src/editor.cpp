@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <iostream>
 
-Editor::Editor() : renderer(), viewport_camera() {};
+Editor::Editor() : renderer(), viewport_camera(), scene() {};
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -141,6 +141,9 @@ auto Editor::init() -> int {
     this->viewport_camera.init_webgpu(this->wgpu.device);
     this->renderer.set_active_camera(&this->viewport_camera);
 
+    this->scene.init_webgpu(this->wgpu.device);
+    this->renderer.set_scene(&this->scene);
+
     return 0;
 }
 
@@ -151,11 +154,6 @@ Editor::~Editor() {
 }
 
 auto Editor::run() -> void {
-    auto scene = vxng::scene::Scene();
-    scene.init_webgpu(this->wgpu.device);
-
-    this->renderer.set_scene(&scene);
-
     bool quit = false;
     while (!quit) {
         poll_events(quit);
@@ -276,9 +274,7 @@ auto Editor::poll_events(bool &quit) -> void {
             break;
 
         case SDL_EVENT_KEY_DOWN:
-            if (evt.key.key == SDLK_ESCAPE) {
-                quit = true;
-            }
+            handle_key_down(evt.key, &quit);
             break;
 
         case SDL_EVENT_MOUSE_MOTION:
@@ -296,6 +292,28 @@ auto Editor::handle_resize(int width, int height) -> void {
 
     // update info for shaders etc
     this->renderer.resize(width, height);
+}
+
+auto random_float() -> float {
+    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+}
+
+auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
+    switch (event.key) {
+    case SDLK_ESCAPE:
+        *quit = true;
+        break;
+    case SDLK_A:
+        auto rand_pos =
+            (glm::vec3(random_float(), random_float(), random_float()) -
+             glm::vec3(0.5f)) *
+            3.99f;
+        auto rand_depth = rand() % 5 + 4;
+        auto rand_color =
+            glm::u8vec4(rand() % 256, rand() % 256, rand() % 256, 255);
+        this->scene.set_voxel_filled(rand_depth, rand_pos, rand_color);
+        break;
+    }
 }
 
 auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {

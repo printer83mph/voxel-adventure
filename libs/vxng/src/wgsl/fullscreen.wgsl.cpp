@@ -60,7 +60,7 @@ fn raycastAABB(ray: Ray, aabb: AABB) -> f32 {
         return -1.0;
     }
     if (tmin < 0.0) {
-        return tmax;
+        return 0.0;
     }
     return tmin;
 }

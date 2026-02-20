@@ -1,22 +1,13 @@
 #include "editor.h"
 
-#include "vxng/renderer.h"
-
-#include <GL/glew.h>
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_log.h>
-#include <SDL3/SDL_video.h>
+#include <sdl3webgpu.h>
+#include <webgpu/webgpu_cpp.h>
 
 #include <cstdlib>
 #include <iostream>
 
-#define OPENGL_MAJOR_VERSION 4
-#define OPENGL_MINOR_VERSION 1
-
-Editor::Editor() : renderer(), viewport_camera() {}
+Editor::Editor() : renderer(), viewport_camera() {};
 
 auto Editor::init() -> int {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -24,120 +15,277 @@ auto Editor::init() -> int {
         return EXIT_FAILURE;
     };
 
-    // use OpenGL at specified version
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, OPENGL_MAJOR_VERSION);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, OPENGL_MINOR_VERSION);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_CORE);
-
     // create window
-    this->sdl_window = SDL_CreateWindow(
-        "My Funny Window", 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    this->sdl_window =
+        SDL_CreateWindow("My Funny Window", 800, 600, SDL_WINDOW_RESIZABLE);
     if (!sdl_window) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM,
                      "Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    // create GL context
-    this->sdl_gl_context = SDL_GL_CreateContext(this->sdl_window);
-    if (!sdl_gl_context) {
-        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
-                     "Couldn't create OpenGL context: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
+    // setup webgpu instance
+    wgpu::InstanceDescriptor instance_desc = {};
+    instance_desc.nextInChain = nullptr;
+    wgpu::InstanceFeatureName instance_features[] = {
+        wgpu::InstanceFeatureName::TimedWaitAny};
+    instance_desc.requiredFeatures = instance_features;
+    instance_desc.requiredFeatureCount = 1;
+    wgpu::Instance wgpu_instance = wgpu::CreateInstance(&instance_desc);
 
-    // ensure we got the right GL version
-    {
-        int gl_version;
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &gl_version);
-        if (gl_version != OPENGL_MAJOR_VERSION)
-            SDL_LogWarn(
-                SDL_LOG_CATEGORY_VIDEO,
-                "Warning: OpenGL major version incorrect: Got %d, expected %d",
-                gl_version, OPENGL_MAJOR_VERSION);
+    // surface should be fully configured for us
+    auto surface = SDL_GetWGPUSurface(wgpu_instance.Get(), this->sdl_window);
+    this->wgpu.surface = wgpu::Surface::Acquire(surface);
 
-        SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &gl_version);
-        if (gl_version != OPENGL_MINOR_VERSION)
-            SDL_LogWarn(
-                SDL_LOG_CATEGORY_VIDEO,
-                "Warning: OpenGL minor version incorrect: Got %d, expected %d",
-                gl_version, OPENGL_MINOR_VERSION);
-    }
+    // request adapter
+    wgpu::RequestAdapterOptions adapter_options = {};
+    adapter_options.nextInChain = nullptr;
+    adapter_options.compatibleSurface = this->wgpu.surface;
+    wgpu::Adapter adapter = nullptr;
+    wgpu::Future future = wgpu_instance.RequestAdapter(
+        &adapter_options, wgpu::CallbackMode::WaitAnyOnly,
+        [&adapter](wgpu::RequestAdapterStatus status, wgpu::Adapter a,
+                   wgpu::StringView message) {
+            if (status == wgpu::RequestAdapterStatus::Success) {
+                adapter = std::move(a);
+            } else {
+                std::cerr << "Failed to get adapter: "
+                          << std::string(message.data, message.length)
+                          << std::endl;
+            }
+        });
 
-    // setup glew
-    glewExperimental = GL_TRUE;
-    GLenum glewError = glewInit();
-    if (glewError != GLEW_OK) {
-        std::cout << "Error initializing glew!\n\n"
-                  << glewGetErrorString(glewError) << std::endl;
-        // TODO: should we return with failure here?
-    }
-
-    // use vsync
-    if (!SDL_GL_SetSwapInterval(1)) {
-        SDL_Log("Warning: Unable to set VSync: %s", SDL_GetError());
-        // TODO: should we return with failure here?
-    }
-
-    // setup our renderer
-    if (!this->renderer.init_gl()) {
+    // block until the adapter request completes
+    wgpu::WaitStatus waitStatus = wgpu_instance.WaitAny(future, UINT64_MAX);
+    if (waitStatus != wgpu::WaitStatus::Success || !adapter) {
+        std::cerr << "Failed to wait for adapter" << std::endl;
         return EXIT_FAILURE;
     }
-    this->viewport_camera.init_gl();
 
-    // set initial renderer size
+    // request device from adapter
+    wgpu::DeviceDescriptor device_desc = {};
+    device_desc.nextInChain = nullptr;
+    device_desc.label = "My Device";
+    device_desc.requiredFeatureCount = 0;
+    device_desc.requiredLimits = nullptr;
+    device_desc.defaultQueue.nextInChain = nullptr;
+    device_desc.defaultQueue.label = "The default queue";
+    device_desc.SetDeviceLostCallback(
+        wgpu::CallbackMode::AllowSpontaneous,
+        [](const wgpu::Device &, wgpu::DeviceLostReason reason,
+           wgpu::StringView message) {
+            std::cerr << "Device lost: reason "
+                      << static_cast<uint32_t>(reason);
+            if (message.length > 0)
+                std::cerr << " (" << std::string(message.data, message.length)
+                          << ")";
+            std::cerr << std::endl;
+        });
+    device_desc.SetUncapturedErrorCallback([](const wgpu::Device &,
+                                              wgpu::ErrorType type,
+                                              wgpu::StringView message) {
+        std::cerr << "Uncaptured device error: type "
+                  << static_cast<uint32_t>(type);
+        if (message.length > 0)
+            std::cerr << " (" << std::string(message.data, message.length)
+                      << ")";
+        std::cerr << std::endl;
+    });
+    future = adapter.RequestDevice(
+        &device_desc, wgpu::CallbackMode::WaitAnyOnly,
+        [this](wgpu::RequestDeviceStatus status, wgpu::Device d,
+               wgpu::StringView message) {
+            if (status == wgpu::RequestDeviceStatus::Success) {
+                this->wgpu.device = std::move(d);
+            } else {
+                std::cerr << "Failed to get device: "
+                          << std::string(message.data, message.length)
+                          << std::endl;
+            }
+        });
+
+    // block until the device request completes
+    waitStatus = wgpu_instance.WaitAny(future, UINT64_MAX);
+    if (waitStatus != wgpu::WaitStatus::Success || !this->wgpu.device) {
+        std::cerr << "Failed to wait for device" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // get queue from device
+    this->wgpu.queue = this->wgpu.device.GetQueue();
+
+    wgpu::SurfaceCapabilities capabilities;
+    this->wgpu.surface.GetCapabilities(adapter, &capabilities);
+    this->wgpu.preferred_format =
+        capabilities.formats[0]; // supposedly this is preferred
+
     int width, height;
     SDL_GetWindowSize(sdl_window, &width, &height);
-    renderer.resize(width, height);
 
-    renderer.set_active_camera(&viewport_camera);
+    // configure the surface for the underlying swap chain
+    wgpu::SurfaceConfiguration config =
+        get_surface_configuration(width, height);
+    this->wgpu.surface.Configure(&config);
+
+    // ok now we init members!
+
+    if (!this->renderer.init_webgpu(this->wgpu.device)) {
+        return EXIT_FAILURE;
+    }
+
+    // set initial renderer size (shader globals)
+    this->renderer.resize(width, height);
+
+    this->viewport_camera.init_webgpu(this->wgpu.device);
+    this->renderer.set_active_camera(&this->viewport_camera);
 
     return 0;
 }
 
-Editor::~Editor() { SDL_Quit(); }
+Editor::~Editor() {
+    this->wgpu.surface.Unconfigure();
 
-auto Editor::loop() -> void {
+    SDL_Quit();
+}
+
+auto Editor::run() -> void {
     bool quit = false;
-    SDL_Event evt;
     while (!quit) {
-        // catch sdl events
-        while (SDL_PollEvent(&evt)) {
-            switch (evt.type) {
+        poll_events(quit);
+        draw_to_surface();
+    }
+}
 
-            case SDL_EVENT_QUIT:
+auto Editor::draw_to_surface() -> void {
+    // Get the next target texture view
+    wgpu::TextureView targetView = get_next_surface_texture_view();
+    if (!targetView)
+        return;
+
+    // Create a command encoder for the draw call
+    wgpu::CommandEncoderDescriptor encoderDesc = {};
+    encoderDesc.label = "My command encoder";
+    wgpu::CommandEncoder encoder =
+        this->wgpu.device.CreateCommandEncoder(&encoderDesc);
+
+    // Create the render pass that clears the screen with our color
+    wgpu::RenderPassDescriptor renderPassDesc = {};
+
+    // The attachment part of the render pass descriptor describes the target
+    // texture of the pass
+    wgpu::RenderPassColorAttachment renderPassColorAttachment = {};
+    renderPassColorAttachment.view = targetView;
+    renderPassColorAttachment.resolveTarget = nullptr;
+    renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
+    renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
+    renderPassColorAttachment.clearValue = wgpu::Color{0.0, 0.0, 0.0, 1.0};
+
+    renderPassDesc.colorAttachmentCount = 1;
+    renderPassDesc.colorAttachments = &renderPassColorAttachment;
+    renderPassDesc.depthStencilAttachment = nullptr;
+    renderPassDesc.timestampWrites = nullptr;
+
+    // render pass!
+    wgpu::RenderPassEncoder renderPass =
+        encoder.BeginRenderPass(&renderPassDesc);
+
+    // delegate this to our vxng::Renderer
+    renderer.render(renderPass);
+
+    renderPass.End();
+
+    // Finally encode and submit the render pass
+    wgpu::CommandBufferDescriptor cmdBufferDescriptor = {};
+    cmdBufferDescriptor.label = "Command buffer";
+    wgpu::CommandBuffer command = encoder.Finish(&cmdBufferDescriptor);
+
+    this->wgpu.queue.Submit(1, &command);
+
+#if defined(WEBGPU_BACKEND_DAWN)
+    this->wgpu.device.Tick();
+#elif defined(WEBGPU_BACKEND_WGPU)
+    this->wgpu.device.Poll(false);
+#endif
+
+    // Present the surface texture to display it on the window
+    this->wgpu.surface.Present();
+}
+
+auto Editor::get_surface_configuration(int width, int height)
+    -> wgpu::SurfaceConfiguration {
+    wgpu::SurfaceConfiguration config = {};
+    config.width = width;
+    config.height = height;
+    config.usage = wgpu::TextureUsage::RenderAttachment;
+    config.format = this->wgpu.preferred_format;
+    config.viewFormatCount = 0; // and we do not need any particular view format
+    config.viewFormats = nullptr;
+    config.device = this->wgpu.device;
+    config.presentMode = wgpu::PresentMode::Fifo;
+    config.alphaMode = wgpu::CompositeAlphaMode::Auto;
+    return config;
+}
+
+auto Editor::get_next_surface_texture_view() -> wgpu::TextureView {
+    // get the surface texture
+    wgpu::SurfaceTexture surface_texture;
+    this->wgpu.surface.GetCurrentTexture(&surface_texture);
+    if (!(surface_texture.status ==
+              wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal ||
+          surface_texture.status ==
+              wgpu::SurfaceGetCurrentTextureStatus::SuccessSuboptimal)) {
+        return nullptr;
+    }
+    wgpu::Texture texture = surface_texture.texture;
+
+    // Create a view for this surface texture
+    wgpu::TextureViewDescriptor texview_desc;
+    texview_desc.nextInChain = nullptr;
+    texview_desc.label = "Surface texture view";
+    texview_desc.format = texture.GetFormat();
+    texview_desc.dimension = wgpu::TextureViewDimension::e2D;
+    texview_desc.baseMipLevel = 0;
+    texview_desc.mipLevelCount = 1;
+    texview_desc.baseArrayLayer = 0;
+    texview_desc.arrayLayerCount = 1;
+    texview_desc.aspect = wgpu::TextureAspect::All;
+
+    wgpu::TextureView target_view = texture.CreateView(&texview_desc);
+
+    return target_view;
+}
+
+auto Editor::poll_events(bool &quit) -> void {
+    SDL_Event evt;
+    while (SDL_PollEvent(&evt)) {
+        switch (evt.type) {
+
+        case SDL_EVENT_QUIT:
+            quit = true;
+            break;
+
+        case SDL_EVENT_WINDOW_RESIZED:
+            handle_resize(evt.window.data1, evt.window.data2);
+            break;
+
+        case SDL_EVENT_KEY_DOWN:
+            if (evt.key.key == SDLK_ESCAPE) {
                 quit = true;
-                break;
-
-            case SDL_EVENT_WINDOW_RESIZED:
-                handle_resize(evt.window.data1, evt.window.data2);
-                break;
-
-            case SDL_EVENT_KEY_DOWN:
-                if (evt.key.key == SDLK_ESCAPE) {
-                    quit = true;
-                    break;
-                }
-
-            case SDL_EVENT_MOUSE_MOTION:
-                handle_mouse_motion(evt.motion);
-                break;
             }
+            break;
+
+        case SDL_EVENT_MOUSE_MOTION:
+            handle_mouse_motion(evt.motion);
+            break;
         }
-
-        // render all my things
-        glClearColor(0.f, 0.f, 0.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        this->renderer.render();
-
-        // update screen
-        SDL_GL_SwapWindow(this->sdl_window);
     }
 }
 
 auto Editor::handle_resize(int width, int height) -> void {
-    glViewport(0, 0, width, height);
+    // reconfigure the surface with new dimensions
+    wgpu::SurfaceConfiguration config =
+        get_surface_configuration(width, height);
+    this->wgpu.surface.Configure(&config);
 
     // update info for shaders etc
     this->renderer.resize(width, height);

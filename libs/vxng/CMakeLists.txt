@@ -1,12 +1,10 @@
 project(vxng)
 
 add_library(${PROJECT_NAME}
-    src/glsl/fullscreen.frag.cpp
-    src/glsl/fullscreen.vert.cpp
+    src/wgsl/fullscreen.wgsl.cpp
     src/camera/camera.cpp
     src/camera/orbit-camera.cpp
     src/scene/scene.cpp
-    src/gl-util.cpp
     src/renderer.cpp
 )
 
@@ -22,7 +20,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        libglew_shared
+        dawn::webgpu_dawn
         glm::glm
 )
 

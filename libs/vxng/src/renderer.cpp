@@ -1,120 +1,205 @@
 #include "vxng/renderer.h"
 
-#include "gl-util.h"
-#include "glsl/shaders.h"
 #include "util.h"
+#include "wgsl/shaders.h"
 
-#include <GL/glew.h>
+#include <array>
+#include <glm/glm.hpp>
+#include <webgpu/webgpu_cpp.h>
 
 #include <iostream>
-
-#define UNIF_BIND_GLOBALS 0
-#define UNIF_BIND_CAMERA 1
 
 namespace vxng {
 
 Renderer::Renderer() {};
 Renderer::~Renderer() {
-    if (!this->gl.initialized)
-        return;
-    glDeleteProgram(this->gl.program);
-    glDeleteShader(this->gl.frag_shader);
-    glDeleteShader(this->gl.vert_shader);
-    glDeleteVertexArrays(1, &this->gl.vao);
+    // WebGPU objects are automatically released when their reference counted
+    // handles all go out of scope
 };
 
-auto Renderer::init_gl() -> bool {
-    // create opengl program
-    GLuint gl_program = glCreateProgram();
+typedef struct WgslGlobalsUniforms {
+    float aspectRatio;
+} WgslGlobalsUniforms;
 
-    // create vert shader
-    GLuint vert_shader = glCreateShader(GL_VERTEX_SHADER);
+typedef struct WgslCameraUniforms {
+    glm::mat4 viewMat;
+    glm::mat4 invViewMat;
+    float fovYRad;
+} WgslCameraUniforms;
+
+auto Renderer::init_webgpu(wgpu::Device device) -> bool {
+
+    // create uniform buffers
+    wgpu::Buffer globals_buffer;
     {
-        const GLchar *vert_src[] = {vxng::shaders::FULLSCREEN_VERT.c_str()};
-        glShaderSource(vert_shader, 1, vert_src, NULL);
-        glCompileShader(vert_shader);
+        wgpu::BufferDescriptor globals_desc;
+        globals_desc.label = "Scene globals uniform buffer";
+        globals_desc.size = 4;
+        globals_desc.usage =
+            wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
+        globals_buffer = device.CreateBuffer(&globals_desc);
+    }
 
-        // check for errors
-        GLint vert_compiled = GL_FALSE;
-        glGetShaderiv(vert_shader, GL_COMPILE_STATUS, &vert_compiled);
-        if (vert_compiled != GL_TRUE) {
-            std::cout << "Unable to compile vertex shader!" << std::endl;
-            printShaderLog(vert_shader);
+    // create bind group layouts for shaders
+    wgpu::BindGroupLayout globals_bind_group_layout = nullptr;
+    wgpu::BindGroupLayout camera_bind_group_layout = nullptr;
+    {
+        // globals bind group layout (group 0)
+        wgpu::BindGroupLayoutEntry globals_layout_entry;
+        globals_layout_entry.binding = 0;
+        globals_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        globals_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
+        globals_layout_entry.buffer.minBindingSize = 4;
+
+        wgpu::BindGroupLayoutDescriptor globals_bgl_desc;
+        globals_bgl_desc.label = "Globals bind group layout";
+        globals_bgl_desc.entryCount = 1;
+        globals_bgl_desc.entries = &globals_layout_entry;
+        globals_bind_group_layout =
+            device.CreateBindGroupLayout(&globals_bgl_desc);
+
+        // camera bind group layout (group 1)
+        wgpu::BindGroupLayoutEntry camera_layout_entry;
+        camera_layout_entry.binding = 0;
+        camera_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        camera_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
+        camera_layout_entry.buffer.minBindingSize = 144;
+
+        wgpu::BindGroupLayoutDescriptor camera_bgl_desc;
+        camera_bgl_desc.label = "Camera bind group layout";
+        camera_bgl_desc.entryCount = 1;
+        camera_bgl_desc.entries = &camera_layout_entry;
+        camera_bind_group_layout =
+            device.CreateBindGroupLayout(&camera_bgl_desc);
+    }
+
+    // create globals bind group (camera bind group created in
+    // set_active_camera)
+    wgpu::BindGroup globals_bind_group = nullptr;
+    {
+        wgpu::BindGroupEntry globals_entry;
+        globals_entry.binding = 0;
+        globals_entry.buffer = globals_buffer;
+        globals_entry.offset = 0;
+        globals_entry.size = 4;
+
+        wgpu::BindGroupDescriptor bg_desc;
+        bg_desc.layout = globals_bind_group_layout;
+        bg_desc.entryCount = 1;
+        bg_desc.entries = &globals_entry;
+        globals_bind_group = device.CreateBindGroup(&bg_desc);
+    }
+
+    // create shader module
+    wgpu::ShaderModule shader_module = nullptr;
+    {
+        wgpu::ShaderSourceWGSL wgsl_source;
+        wgsl_source.code = vxng::shaders::FULLSCREEN_WGSL.c_str();
+
+        wgpu::ShaderModuleDescriptor shader_desc;
+        shader_desc.nextInChain = &wgsl_source;
+        shader_desc.label = "Fullscreen raymarching shader";
+
+        shader_module = device.CreateShaderModule(&shader_desc);
+        if (!shader_module) {
+            std::cout << "Failed to create shader module!" << std::endl;
             return false;
         }
-
-        glAttachShader(gl_program, vert_shader);
     }
 
-    // create frag shader
-    GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    // create pipeline layout
+    wgpu::PipelineLayout pipeline_layout = nullptr;
     {
-        const GLchar *frag_src[] = {vxng::shaders::FULLSCREEN_FRAG.c_str()};
-        glShaderSource(frag_shader, 1, frag_src, NULL);
-        glCompileShader(frag_shader);
+        std::array<wgpu::BindGroupLayout, 2> bind_group_layouts = {
+            globals_bind_group_layout, camera_bind_group_layout};
 
-        // check for errors
-        GLint vert_compiled = GL_FALSE;
-        glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &vert_compiled);
-        if (vert_compiled != GL_TRUE) {
-            std::cout << "Unable to compile fragment shader!" << std::endl;
-            printShaderLog(frag_shader);
+        wgpu::PipelineLayoutDescriptor layout_desc;
+        layout_desc.label = "Render pipeline layout";
+        layout_desc.bindGroupLayoutCount = 2;
+        layout_desc.bindGroupLayouts = bind_group_layouts.data();
+        pipeline_layout = device.CreatePipelineLayout(&layout_desc);
+    }
+
+    // create render pipeline
+    wgpu::RenderPipeline render_pipeline = nullptr;
+    {
+        wgpu::RenderPipelineDescriptor pipeline_desc;
+        pipeline_desc.label = "Fullscreen render pipeline";
+        pipeline_desc.layout = pipeline_layout;
+
+        wgpu::VertexState vertex_state;
+        vertex_state.module = shader_module;
+        vertex_state.entryPoint = "vs_main";
+        vertex_state.bufferCount = 0;
+        vertex_state.buffers = nullptr;
+        pipeline_desc.vertex = vertex_state;
+
+        wgpu::PrimitiveState primitive_state;
+        primitive_state.topology = wgpu::PrimitiveTopology::TriangleList;
+        primitive_state.stripIndexFormat = wgpu::IndexFormat::Undefined;
+        primitive_state.frontFace = wgpu::FrontFace::CCW;
+        primitive_state.cullMode = wgpu::CullMode::None;
+        pipeline_desc.primitive = primitive_state;
+
+        wgpu::FragmentState fragment_state;
+        fragment_state.module = shader_module;
+        fragment_state.entryPoint = "fs_main";
+
+        // color target
+        wgpu::ColorTargetState color_target;
+        color_target.format = wgpu::TextureFormat::BGRA8Unorm;
+        color_target.writeMask = wgpu::ColorWriteMask::All;
+
+        wgpu::BlendState blend_state;
+        blend_state.color.srcFactor = wgpu::BlendFactor::One;
+        blend_state.color.dstFactor = wgpu::BlendFactor::Zero;
+        blend_state.color.operation = wgpu::BlendOperation::Add;
+        blend_state.alpha.srcFactor = wgpu::BlendFactor::One;
+        blend_state.alpha.dstFactor = wgpu::BlendFactor::Zero;
+        blend_state.alpha.operation = wgpu::BlendOperation::Add;
+        color_target.blend = &blend_state;
+
+        fragment_state.targetCount = 1;
+        fragment_state.targets = &color_target;
+        pipeline_desc.fragment = &fragment_state;
+
+        // no depth/stencil for fullscreen pass
+        pipeline_desc.depthStencil = nullptr;
+
+        // multisample state
+        wgpu::MultisampleState multisample_state;
+        multisample_state.count = 1;
+        multisample_state.mask = ~0u;
+        multisample_state.alphaToCoverageEnabled = false;
+        pipeline_desc.multisample = multisample_state;
+
+        render_pipeline = device.CreateRenderPipeline(&pipeline_desc);
+        if (!render_pipeline) {
+            std::cerr << "Failed to create render pipeline!" << std::endl;
             return false;
         }
-
-        glAttachShader(gl_program, frag_shader);
     }
 
-    glLinkProgram(gl_program);
-
-    // use uniform blocks
-    {
-        GLuint globals_block = glGetUniformBlockIndex(gl_program, "Globals");
-        GLuint camera_block = glGetUniformBlockIndex(gl_program, "Camera");
-        glUniformBlockBinding(gl_program, globals_block, UNIF_BIND_GLOBALS);
-        glUniformBlockBinding(gl_program, camera_block, UNIF_BIND_CAMERA);
-    }
-
-    // check for errors
-    GLint program_success = GL_TRUE;
-    glGetProgramiv(gl_program, GL_LINK_STATUS, &program_success);
-    if (program_success != GL_TRUE) {
-        std::cout << "Error linking program!" << std::endl;
-        printProgramLog(gl_program);
-        return false;
-    }
-
-    // create vao
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    // setup global rendering params ubo
-    GLuint globals_ubo;
-    {
-        glGenBuffers(1, &globals_ubo);
-        glBindBuffer(GL_UNIFORM_BUFFER, globals_ubo);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(float), nullptr,
-                     GL_DYNAMIC_DRAW);
-
-        glBindBufferBase(GL_UNIFORM_BUFFER, UNIF_BIND_GLOBALS, globals_ubo);
-    }
-
-    this->gl.initialized = true;
-    this->gl.program = gl_program;
-    this->gl.vert_shader = vert_shader;
-    this->gl.frag_shader = frag_shader;
-    this->gl.vao = vao;
-    this->gl.globals_ubo = globals_ubo;
+    // store all objects in member struct
+    this->wgpu.initialized = true;
+    this->wgpu.device = device;
+    this->wgpu.queue = device.GetQueue();
+    this->wgpu.globals_uniforms_buffer = globals_buffer;
+    this->wgpu.globals_bind_group_layout = globals_bind_group_layout;
+    this->wgpu.camera_bind_group_layout = camera_bind_group_layout;
+    this->wgpu.globals_bind_group = globals_bind_group;
+    // camera_bind_group is set in set_active_camera
+    this->wgpu.shader_module = shader_module;
+    this->wgpu.pipeline_layout = pipeline_layout;
+    this->wgpu.render_pipeline = render_pipeline;
 
     return true;
 }
 
 auto Renderer::resize(int width, int height) -> void {
     float aspect = (float)width / (float)height;
-    glBindBuffer(GL_UNIFORM_BUFFER, this->gl.globals_ubo);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(float), &aspect);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 0, &aspect,
+                                 sizeof(float));
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
@@ -123,18 +208,31 @@ auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
 
 auto Renderer::set_active_camera(const vxng::camera::Camera *camera) -> void {
     this->active_camera = camera;
-    // bind this camera's ubo to our bind point
-    glBindBufferBase(GL_UNIFORM_BUFFER, UNIF_BIND_CAMERA, camera->get_ubo());
+
+    // create a new bind group for this camera's buffer
+    wgpu::BindGroupEntry camera_entry;
+    camera_entry.binding = 0;
+    camera_entry.buffer = camera->get_buffer();
+    camera_entry.offset = 0;
+    camera_entry.size = 144;
+
+    wgpu::BindGroupDescriptor bg_desc;
+    bg_desc.layout = this->wgpu.camera_bind_group_layout;
+    bg_desc.entryCount = 1;
+    bg_desc.entries = &camera_entry;
+    this->wgpu.camera_bind_group = this->wgpu.device.CreateBindGroup(&bg_desc);
 }
 
-auto Renderer::render() const -> void {
-    glBindVertexArray(this->gl.vao);
-    glUseProgram(this->gl.program);
+auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
+    // set the render pipeline
+    render_pass.SetPipeline(this->wgpu.render_pipeline);
 
-    // don't use any buffers, we just let our vert shader set gl_Position
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    // bind the uniform bind groups
+    render_pass.SetBindGroup(0, this->wgpu.globals_bind_group);
+    render_pass.SetBindGroup(1, this->wgpu.camera_bind_group);
 
-    glUseProgram(0);
+    // draw fullscreen triangle (3 vertices, 1 instance)
+    render_pass.Draw(3, 1, 0, 0);
 };
 
 } // namespace vxng

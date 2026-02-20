@@ -4,7 +4,6 @@
 
 namespace vxng::shaders {
 
-extern const std::string FULLSCREEN_FRAG;
-extern const std::string FULLSCREEN_VERT;
+extern const std::string FULLSCREEN_WGSL;
 
 } // namespace vxng::shaders

@@ -1,12 +1,12 @@
+[submodule "vendor/dawn"]
+	path = vendor/dawn
+	url = https://github.com/google/dawn.git
+	; Pinned to tag 'v20260214.164635'
+
 [submodule "vendor/SDL"]
 	path = vendor/SDL
 	url = https://github.com/libsdl-org/SDL.git
 	; Pinned to tag 'release-3.4.0'
-
-[submodule "vendor/glew-cmake"]
-	path = vendor/glew-cmake
-	url = https://github.com/Perlmint/glew-cmake.git
-	; Pinned to tag 'glew-cmake-2.3.1'
 
 [submodule "vendor/glm"]
 	path = vendor/glm

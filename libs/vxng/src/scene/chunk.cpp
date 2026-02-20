@@ -1,5 +1,6 @@
 #include "chunk.h"
-#include "webgpu/webgpu_cpp.h"
+
+#include <webgpu/webgpu_cpp.h>
 
 #include <memory>
 #include <queue>

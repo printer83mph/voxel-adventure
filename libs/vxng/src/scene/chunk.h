@@ -1,5 +1,6 @@
 #pragma once
 
+#include "glm/fwd.hpp"
 #include <glm/glm.hpp>
 #include <webgpu/webgpu_cpp.h>
 
@@ -40,7 +41,11 @@ class Chunk {
     ~Chunk();
 
     auto init_webgpu(wgpu::Device device) -> void;
+    /** For rendering: we can hook up bindgroup to render this chunk */
     auto get_bindgroup() const -> wgpu::BindGroup;
+
+    auto set_voxel_filled(int depth, glm::vec3 local_position,
+                          glm::u8vec4 color) -> void;
 
     /** runs create_bindgroup_layout if not bindgroup_layout_created */
     static auto get_bindgroup_layout(wgpu::Device device)

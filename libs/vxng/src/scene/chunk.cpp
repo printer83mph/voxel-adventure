@@ -51,6 +51,56 @@ auto Chunk::get_bindgroup() const -> wgpu::BindGroup {
     return this->wgpu.bindgroup;
 }
 
+auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
+                             glm::u8vec4 color) -> void {
+    if (!this->root_node) {
+        this->root_node = std::make_unique<OctreeNode>();
+    }
+    auto *node = this->root_node.get();
+
+    // create required nodes to specific depth
+    for (int trav_depth = 0; trav_depth < depth; ++trav_depth) {
+        bool node_is_leaf = node->is_leaf;
+        if (node_is_leaf) {
+            // if we were filled, then fill all children
+            for (int i = 0; i < 8; ++i) {
+                node->children[i] = std::make_unique<OctreeNode>();
+                auto &child = node->children[i];
+
+                child->is_leaf = true;
+                child->leaf_data = node->leaf_data;
+            }
+        }
+        node->is_leaf = false;
+
+        // dig into specific child node based on position
+        int child_index = ((uint32_t)(local_position.x >= 0) << 0) +
+                          ((uint32_t)(local_position.y >= 0) << 1) +
+                          ((uint32_t)(local_position.z >= 0) << 2);
+
+        // make child node if not exists
+        if (!node->children[child_index]) {
+            node->children[child_index] = std::make_unique<OctreeNode>();
+            auto &child = node->children[child_index];
+
+            child->is_leaf = node_is_leaf;
+            child->leaf_data = node->leaf_data;
+        }
+
+        // put local position into terms of new node bounds
+        local_position = glm::fract((local_position + glm::vec3(0.5f)) * 2.0f) -
+                         glm::vec3(0.5f);
+        node = node->children[child_index].get();
+    }
+
+    // we have gotten to our desired depth, now just set active node to leaf
+    node->is_leaf = true;
+    node->leaf_data.color = color;
+
+    // and of course update buffers for rendering
+    update_buffers();
+};
+
 auto Chunk::create_bindgroup_layout(wgpu::Device device) -> void {
     wgpu::BindGroupLayoutEntry bgl_entries[3];
 

@@ -48,6 +48,7 @@ class Chunk {
         wgpu::Device device;
         wgpu::Buffer octree_buffer;
         wgpu::Buffer vxdata_buffer;
+        wgpu::Buffer metadata_buffer;
         wgpu::BindGroup bindgroup;
     } wgpu;
 };

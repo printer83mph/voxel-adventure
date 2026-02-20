@@ -12,7 +12,13 @@ namespace vxng::scene {
 Scene::Scene() {}
 Scene::~Scene() {}
 
-auto Scene::init_webgpu(wgpu::Device device) -> void {}
+auto Scene::init_webgpu(wgpu::Device device) -> void {
+    auto origin_chunk = std::make_unique<Chunk>(glm::vec3(0), 4.0, 512);
+    origin_chunk->init_webgpu(device);
+
+    this->chunks[glm::ivec3(0)] = std::move(origin_chunk);
+    this->wgpu.device = device;
+}
 
 auto Scene::get_chunks() const
     -> const std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> & {
@@ -29,6 +35,7 @@ auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
     if (!this->chunks[chunk_coord]) {
         this->chunks[chunk_coord] = std::make_unique<Chunk>(
             chunk_origin, CHUNK_SCALE, CHUNK_RESOLUTION);
+        this->chunks[chunk_coord]->init_webgpu(this->wgpu.device);
     }
 
     this->chunks[chunk_coord]->set_voxel_filled(depth, local_position, color);

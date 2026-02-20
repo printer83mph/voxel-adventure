@@ -28,6 +28,10 @@ class Scene {
 
   private:
     std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> chunks;
+
+    struct {
+        wgpu::Device device;
+    } wgpu;
 };
 
 } // namespace vxng::scene

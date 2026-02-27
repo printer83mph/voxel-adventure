@@ -13,22 +13,7 @@ wgpu::BindGroupLayout Chunk::bindgroup_layout = nullptr;
 bool Chunk::bindgroup_layout_created = false;
 
 Chunk::Chunk(glm::vec3 pos, float scale, int resolution)
-    : position(pos), scale(scale), resolution(resolution) {
-    // TEMP: setup hardcoded scene
-    this->root_node = std::make_unique<OctreeNode>();
-    auto &root = this->root_node;
-
-    root->is_leaf = false;
-    root->children[0] = std::make_unique<OctreeNode>();
-    root->children[7] = std::make_unique<OctreeNode>();
-    auto &leaf1 = root->children[0];
-    auto &leaf2 = root->children[7];
-
-    leaf1->is_leaf = true;
-    leaf1->leaf_data.color = {200, 100, 0, 255};
-    leaf2->is_leaf = true;
-    leaf2->leaf_data.color = {0, 100, 200, 255};
-};
+    : position(pos), scale(scale), resolution(resolution) {};
 
 Chunk::~Chunk() {
     if (!this->wgpu.initialized)

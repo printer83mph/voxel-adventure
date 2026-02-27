@@ -316,8 +316,8 @@ auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
         auto rand_pos =
             (glm::vec3(random_float(), random_float(), random_float()) -
              glm::vec3(0.5f)) *
-            3.99f;
-        auto rand_depth = rand() % 5 + 4;
+            11.99f;
+        auto rand_depth = rand() % 7 + 2;
         auto rand_color =
             glm::u8vec4(rand() % 256, rand() % 256, rand() % 256, 255);
         this->scene.set_voxel_filled(rand_depth, rand_pos, rand_color);

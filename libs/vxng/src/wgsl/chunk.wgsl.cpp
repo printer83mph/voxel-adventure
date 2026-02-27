@@ -2,7 +2,7 @@
 
 namespace vxng::shaders {
 
-const std::string FULLSCREEN_WGSL = R"wgsl(
+const std::string CHUNK_WGSL = R"wgsl(
 // Uniform buffer for global settings
 struct Globals {
     aspectRatio: f32,
@@ -272,45 +272,83 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> TraversalResult {
 // Vertex shader output / Fragment shader input
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) texcoords: vec2<f32>,
+    @location(0) worldPos: vec3<f32>,
 }
+
+struct FragmentOutput {
+    @location(0) color: vec4<f32>,
+    @builtin(frag_depth) depth: f32,
+}
+
+// for depth mapping
+const NEAR_PLANE: f32 = 0.1;
+const FAR_PLANE: f32 = 1000.0;
+
+fn computeDepth(ray: Ray, t: f32) -> f32 {
+    let hitPoint = ray.origin + t * ray.direction;
+    let viewPos = camera.viewMat * vec4<f32>(hitPoint, 1.0);
+    let linearZ = -viewPos.z; // view space goes down -Z
+    // map to [0, 1)
+    return (FAR_PLANE * (linearZ - NEAR_PLANE)) /
+        (linearZ * (FAR_PLANE - NEAR_PLANE));
+}
+
+// Unit cube geometry: 8 corners from [-0.5, 0.5]
+const CUBE_POSITIONS = array<vec3<f32>, 8>(
+    vec3<f32>(-0.5, -0.5, -0.5), // 0: left  bottom back
+    vec3<f32>( 0.5, -0.5, -0.5), // 1: right bottom back
+    vec3<f32>( 0.5,  0.5, -0.5), // 2: right top    back
+    vec3<f32>(-0.5,  0.5, -0.5), // 3: left  top    back
+    vec3<f32>(-0.5, -0.5,  0.5), // 4: left  bottom front
+    vec3<f32>( 0.5, -0.5,  0.5), // 5: right bottom front
+    vec3<f32>( 0.5,  0.5,  0.5), // 6: right top    front
+    vec3<f32>(-0.5,  0.5,  0.5), // 7: left  top    front
+);
+
+// 12 triangles (36 indices), CCW winding from outside
+const CUBE_INDICES = array<u32, 36>(
+    0u, 2u, 1u,  0u, 3u, 2u,  // back  (-Z)
+    4u, 5u, 6u,  4u, 6u, 7u,  // front (+Z)
+    0u, 4u, 7u,  0u, 7u, 3u,  // left  (-X)
+    1u, 2u, 6u,  1u, 6u, 5u,  // right (+X)
+    0u, 1u, 5u,  0u, 5u, 4u,  // bottom(-Y)
+    3u, 7u, 6u,  3u, 6u, 2u,  // top   (+Y)
+);
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
-    // Fullscreen triangle vertices
-    var vertices = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>(3.0, -1.0),
-        vec2<f32>(-1.0, 3.0)
+    let cubePos = CUBE_POSITIONS[CUBE_INDICES[vertexIndex]];
+
+    // Transform unit cube [-0.5, 0.5]^3 to chunk world space
+    let worldPos = cubePos * chunkMetadata.size + chunkMetadata.position;
+
+    // View transform
+    let viewPos = camera.viewMat * vec4<f32>(worldPos, 1.0);
+
+    // Build perspective projection from fov and aspect ratio
+    // WebGPU clip space: x,y in [-1,1], z in [0,1]
+    let f = 1.0 / tan(camera.fovYRad * 0.5);
+    let nf = NEAR_PLANE - FAR_PLANE;
+    let clipPos = vec4<f32>(
+        viewPos.x * f / globals.aspectRatio,
+        viewPos.y * f,
+        viewPos.z * FAR_PLANE / nf + NEAR_PLANE * FAR_PLANE / nf,
+        -viewPos.z
     );
 
     var output: VertexOutput;
-    output.position = vec4<f32>(vertices[vertexIndex], 0.0, 1.0);
-    output.texcoords = 0.5 * output.position.xy + vec2<f32>(0.5);
+    output.position = clipPos;
+    output.worldPos = worldPos;
     return output;
 }
 
 @fragment
-fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    let ndcCoords = input.texcoords * 2.0 - 1.0;
-
-    // Compute ray direction in view space
-    let tanHalfFov = tan(camera.fovYRad * 0.5);
-    let rayDirView = normalize(vec3<f32>(
-        ndcCoords.x * globals.aspectRatio * tanHalfFov,
-        ndcCoords.y * tanHalfFov,
-        -1.0
-    ));
-
-    // Build view ray
-    let invViewMat3 = mat3x3<f32>(
-        camera.invViewMat[0].xyz,
-        camera.invViewMat[1].xyz,
-        camera.invViewMat[2].xyz
-    );
+fn fs_main(input: VertexOutput) -> FragmentOutput {
+    // Build ray from camera through this fragment's world position
+    let cameraPos = camera.invViewMat[3].xyz;
     var viewRay: Ray;
-    viewRay.direction = invViewMat3 * rayDirView;
-    viewRay.origin = camera.invViewMat[3].xyz;
+    viewRay.origin = cameraPos;
+    viewRay.direction = normalize(input.worldPos - cameraPos);
 
     // setup root AABB from chunk metadata
     let halfSize = chunkMetadata.size * 0.5;
@@ -320,17 +358,23 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     // traverse octree!
     let result = traverseOctree(viewRay, rootAABB);
-    if (result.color.a == 0.0) {
-        // if no hit, show ray direction as sky
-        return vec4<f32>(viewRay.direction, 1.0);
-    }
 
-    // simple half lambert lighting
-    let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
-    let ambient = 0.2;
-    let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0);
-    let lighting = ambient + (1.0 - ambient) * diffuse;
-    return vec4<f32>(result.color.rgb * lighting, result.color.a);
+    var output: FragmentOutput;
+    if (result.color.a == 0.0) {
+        // no voxel hit within this chunk's AABB — discard so the
+        // clear color / sky pass shows through
+        discard;
+    } else {
+        // simple half lambert lighting
+        let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
+        let ambient = 0.2;
+        let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0);
+        let lighting = ambient + (1.0 - ambient) * diffuse;
+
+        output.color = vec4<f32>(result.color.rgb * lighting, result.color.a);
+        output.depth = computeDepth(viewRay, result.t);
+    }
+    return output;
 }
 )wgsl";
 

@@ -185,9 +185,18 @@ auto Editor::draw_to_surface() -> void {
     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
     renderPassColorAttachment.clearValue = wgpu::Color{0.0, 0.0, 0.0, 1.0};
 
+    // depth attachment for multi-chunk rendering
+    wgpu::RenderPassDepthStencilAttachment depthAttachment;
+    depthAttachment.view = renderer.get_depth_texture_view();
+    depthAttachment.depthLoadOp = wgpu::LoadOp::Clear;
+    depthAttachment.depthStoreOp = wgpu::StoreOp::Store;
+    depthAttachment.depthClearValue = 1.0f; // far plane
+    depthAttachment.stencilLoadOp = wgpu::LoadOp::Undefined;
+    depthAttachment.stencilStoreOp = wgpu::StoreOp::Undefined;
+
     renderPassDesc.colorAttachmentCount = 1;
     renderPassDesc.colorAttachments = &renderPassColorAttachment;
-    renderPassDesc.depthStencilAttachment = nullptr;
+    renderPassDesc.depthStencilAttachment = &depthAttachment;
     renderPassDesc.timestampWrites = nullptr;
 
     // render pass!
@@ -307,8 +316,8 @@ auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
         auto rand_pos =
             (glm::vec3(random_float(), random_float(), random_float()) -
              glm::vec3(0.5f)) *
-            3.99f;
-        auto rand_depth = rand() % 5 + 4;
+            11.99f;
+        auto rand_depth = rand() % 7 + 2;
         auto rand_color =
             glm::u8vec4(rand() % 256, rand() % 256, rand() % 256, 255);
         this->scene.set_voxel_filled(rand_depth, rand_pos, rand_color);

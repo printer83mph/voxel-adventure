@@ -4,6 +4,6 @@
 
 namespace vxng::shaders {
 
-extern const std::string FULLSCREEN_WGSL;
+extern const std::string CHUNK_WGSL;
 
 } // namespace vxng::shaders

@@ -17,12 +17,15 @@ class Renderer {
 
     /** Sets up program + shader bindings */
     auto init_webgpu(wgpu::Device device) -> bool;
+    auto get_depth_texture_view() const -> wgpu::TextureView;
     auto resize(int width, int height) -> void;
     auto set_scene(vxng::scene::Scene const *scene) -> void;
     auto set_active_camera(const vxng::camera::Camera *camera) -> void;
     auto render(wgpu::RenderPassEncoder &render_pass) const -> void;
 
   private:
+    auto create_depth_texture(int width, int height) -> void;
+
     struct {
         bool initialized;
         wgpu::Device device;
@@ -35,6 +38,8 @@ class Renderer {
         wgpu::ShaderModule shader_module;
         wgpu::PipelineLayout pipeline_layout;
         wgpu::RenderPipeline render_pipeline;
+        wgpu::Texture depth_texture;
+        wgpu::TextureView depth_texture_view;
     } wgpu;
 
     const vxng::camera::Camera *active_camera;

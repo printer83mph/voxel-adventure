@@ -49,7 +49,8 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         // globals bind group layout (group 0)
         wgpu::BindGroupLayoutEntry globals_layout_entry;
         globals_layout_entry.binding = 0;
-        globals_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        globals_layout_entry.visibility =
+            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         globals_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
         globals_layout_entry.buffer.minBindingSize = 4;
 
@@ -63,7 +64,8 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         // camera bind group layout (group 1)
         wgpu::BindGroupLayoutEntry camera_layout_entry;
         camera_layout_entry.binding = 0;
-        camera_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        camera_layout_entry.visibility =
+            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         camera_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
         camera_layout_entry.buffer.minBindingSize = 144;
 
@@ -96,7 +98,7 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     wgpu::ShaderModule shader_module = nullptr;
     {
         wgpu::ShaderSourceWGSL wgsl_source;
-        wgsl_source.code = vxng::shaders::FULLSCREEN_WGSL.c_str();
+        wgsl_source.code = vxng::shaders::CHUNK_WGSL.c_str();
 
         wgpu::ShaderModuleDescriptor shader_desc;
         shader_desc.nextInChain = &wgsl_source;
@@ -166,8 +168,12 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         fragment_state.targets = &color_target;
         pipeline_desc.fragment = &fragment_state;
 
-        // no depth/stencil for fullscreen pass
-        pipeline_desc.depthStencil = nullptr;
+        // use our de
+        wgpu::DepthStencilState depth_stencil_state;
+        depth_stencil_state.format = wgpu::TextureFormat::Depth32Float;
+        depth_stencil_state.depthWriteEnabled = true;
+        depth_stencil_state.depthCompare = wgpu::CompareFunction::Less;
+        pipeline_desc.depthStencil = &depth_stencil_state;
 
         // multisample state
         wgpu::MultisampleState multisample_state;
@@ -203,6 +209,8 @@ auto Renderer::resize(int width, int height) -> void {
     float aspect = (float)width / (float)height;
     this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 0, &aspect,
                                  sizeof(float));
+
+    create_depth_texture(width, height);
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
@@ -237,9 +245,42 @@ auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
     for (auto &[coord, chunk] : this->active_scene->get_chunks()) {
         render_pass.SetBindGroup(2, chunk->get_bindgroup());
 
-        // draw fullscreen triangle (3 vertices, 1 instance)
-        render_pass.Draw(3, 1, 0, 0);
+        // draw chunk AABB cube (36 vertices = 12 triangles)
+        render_pass.Draw(36, 1, 0, 0);
     }
 };
+
+auto Renderer::create_depth_texture(int width, int height) -> void {
+    if (this->wgpu.depth_texture) {
+        this->wgpu.depth_texture.Destroy();
+    }
+
+    wgpu::TextureDescriptor desc;
+    desc.label = "Depth texture";
+    desc.size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height),
+                 1};
+    desc.mipLevelCount = 1;
+    desc.sampleCount = 1;
+    desc.dimension = wgpu::TextureDimension::e2D;
+    desc.format = wgpu::TextureFormat::Depth32Float;
+    desc.usage = wgpu::TextureUsage::RenderAttachment;
+    this->wgpu.depth_texture = this->wgpu.device.CreateTexture(&desc);
+
+    wgpu::TextureViewDescriptor view_desc;
+    view_desc.label = "Depth texture view";
+    view_desc.format = wgpu::TextureFormat::Depth32Float;
+    view_desc.dimension = wgpu::TextureViewDimension::e2D;
+    view_desc.baseMipLevel = 0;
+    view_desc.mipLevelCount = 1;
+    view_desc.baseArrayLayer = 0;
+    view_desc.arrayLayerCount = 1;
+    view_desc.aspect = wgpu::TextureAspect::DepthOnly;
+    this->wgpu.depth_texture_view =
+        this->wgpu.depth_texture.CreateView(&view_desc);
+}
+
+auto Renderer::get_depth_texture_view() const -> wgpu::TextureView {
+    return this->wgpu.depth_texture_view;
+}
 
 } // namespace vxng

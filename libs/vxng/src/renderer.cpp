@@ -166,8 +166,12 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         fragment_state.targets = &color_target;
         pipeline_desc.fragment = &fragment_state;
 
-        // no depth/stencil for fullscreen pass
-        pipeline_desc.depthStencil = nullptr;
+        // use our de
+        wgpu::DepthStencilState depth_stencil_state;
+        depth_stencil_state.format = wgpu::TextureFormat::Depth32Float;
+        depth_stencil_state.depthWriteEnabled = true;
+        depth_stencil_state.depthCompare = wgpu::CompareFunction::Less;
+        pipeline_desc.depthStencil = &depth_stencil_state;
 
         // multisample state
         wgpu::MultisampleState multisample_state;
@@ -203,6 +207,8 @@ auto Renderer::resize(int width, int height) -> void {
     float aspect = (float)width / (float)height;
     this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 0, &aspect,
                                  sizeof(float));
+
+    create_depth_texture(width, height);
 };
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
@@ -241,5 +247,38 @@ auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
         render_pass.Draw(3, 1, 0, 0);
     }
 };
+
+auto Renderer::create_depth_texture(int width, int height) -> void {
+    if (this->wgpu.depth_texture) {
+        this->wgpu.depth_texture.Destroy();
+    }
+
+    wgpu::TextureDescriptor desc;
+    desc.label = "Depth texture";
+    desc.size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height),
+                 1};
+    desc.mipLevelCount = 1;
+    desc.sampleCount = 1;
+    desc.dimension = wgpu::TextureDimension::e2D;
+    desc.format = wgpu::TextureFormat::Depth32Float;
+    desc.usage = wgpu::TextureUsage::RenderAttachment;
+    this->wgpu.depth_texture = this->wgpu.device.CreateTexture(&desc);
+
+    wgpu::TextureViewDescriptor view_desc;
+    view_desc.label = "Depth texture view";
+    view_desc.format = wgpu::TextureFormat::Depth32Float;
+    view_desc.dimension = wgpu::TextureViewDimension::e2D;
+    view_desc.baseMipLevel = 0;
+    view_desc.mipLevelCount = 1;
+    view_desc.baseArrayLayer = 0;
+    view_desc.arrayLayerCount = 1;
+    view_desc.aspect = wgpu::TextureAspect::DepthOnly;
+    this->wgpu.depth_texture_view =
+        this->wgpu.depth_texture.CreateView(&view_desc);
+}
+
+auto Renderer::get_depth_texture_view() const -> wgpu::TextureView {
+    return this->wgpu.depth_texture_view;
+}
 
 } // namespace vxng

@@ -98,7 +98,7 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     wgpu::ShaderModule shader_module = nullptr;
     {
         wgpu::ShaderSourceWGSL wgsl_source;
-        wgsl_source.code = vxng::shaders::FULLSCREEN_WGSL.c_str();
+        wgsl_source.code = vxng::shaders::CHUNK_WGSL.c_str();
 
         wgpu::ShaderModuleDescriptor shader_desc;
         shader_desc.nextInChain = &wgsl_source;

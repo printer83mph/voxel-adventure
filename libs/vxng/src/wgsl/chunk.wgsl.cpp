@@ -2,7 +2,7 @@
 
 namespace vxng::shaders {
 
-const std::string FULLSCREEN_WGSL = R"wgsl(
+const std::string CHUNK_WGSL = R"wgsl(
 // Uniform buffer for global settings
 struct Globals {
     aspectRatio: f32,

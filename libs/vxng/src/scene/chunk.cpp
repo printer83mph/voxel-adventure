@@ -103,9 +103,9 @@ auto Chunk::create_bindgroup_layout(wgpu::Device device) -> void {
 
     auto &metadata_entry = bgl_entries[2];
     metadata_entry.binding = 2;
-    metadata_entry.visibility = wgpu::ShaderStage::Fragment;
+    metadata_entry.visibility =
+        wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     metadata_entry.buffer.type = wgpu::BufferBindingType::Uniform;
-    metadata_entry.buffer.minBindingSize = sizeof(GPUChunkMetadata);
 
     wgpu::BindGroupLayoutDescriptor bgl_descriptor = {};
     bgl_descriptor.label = "Chunk data bind group layout";

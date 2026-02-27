@@ -49,7 +49,8 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         // globals bind group layout (group 0)
         wgpu::BindGroupLayoutEntry globals_layout_entry;
         globals_layout_entry.binding = 0;
-        globals_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        globals_layout_entry.visibility =
+            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         globals_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
         globals_layout_entry.buffer.minBindingSize = 4;
 
@@ -63,7 +64,8 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         // camera bind group layout (group 1)
         wgpu::BindGroupLayoutEntry camera_layout_entry;
         camera_layout_entry.binding = 0;
-        camera_layout_entry.visibility = wgpu::ShaderStage::Fragment;
+        camera_layout_entry.visibility =
+            wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         camera_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
         camera_layout_entry.buffer.minBindingSize = 144;
 
@@ -243,8 +245,8 @@ auto Renderer::render(wgpu::RenderPassEncoder &render_pass) const -> void {
     for (auto &[coord, chunk] : this->active_scene->get_chunks()) {
         render_pass.SetBindGroup(2, chunk->get_bindgroup());
 
-        // draw fullscreen triangle (3 vertices, 1 instance)
-        render_pass.Draw(3, 1, 0, 0);
+        // draw chunk AABB cube (36 vertices = 12 triangles)
+        render_pass.Draw(36, 1, 0, 0);
     }
 };
 

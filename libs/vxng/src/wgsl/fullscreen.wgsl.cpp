@@ -275,6 +275,24 @@ struct VertexOutput {
     @location(0) texcoords: vec2<f32>,
 }
 
+struct FragmentOutput {
+    @location(0) color: vec4<f32>,
+    @builtin(frag_depth) depth: f32,
+}
+
+// for depth mapping
+const NEAR_PLANE: f32 = 0.1;
+const FAR_PLANE: f32 = 1000.0;
+
+fn computeDepth(ray: Ray, t: f32) -> f32 {
+    let hitPoint = ray.origin + t * ray.direction;
+    let viewPos = camera.viewMat * vec4<f32>(hitPoint, 1.0);
+    let linearZ = -viewPos.z; // view space goes down -Z
+    // map to [0, 1)
+    return (FAR_PLANE * (linearZ - NEAR_PLANE)) /
+        (linearZ * (FAR_PLANE - NEAR_PLANE));
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
     // Fullscreen triangle vertices
@@ -291,7 +309,7 @@ fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 }
 
 @fragment
-fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+fn fs_main(input: VertexOutput) -> FragmentOutput {
     let ndcCoords = input.texcoords * 2.0 - 1.0;
 
     // Compute ray direction in view space
@@ -320,17 +338,23 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     // traverse octree!
     let result = traverseOctree(viewRay, rootAABB);
-    if (result.color.a == 0.0) {
-        // if no hit, show ray direction as sky
-        return vec4<f32>(viewRay.direction, 1.0);
-    }
 
-    // simple half lambert lighting
-    let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
-    let ambient = 0.2;
-    let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0);
-    let lighting = ambient + (1.0 - ambient) * diffuse;
-    return vec4<f32>(result.color.rgb * lighting, result.color.a);
+    var output: FragmentOutput;
+    if (result.color.a == 0.0) {
+        // if no hit, show ray direction as sky with max depth
+        output.color = vec4<f32>(viewRay.direction, 1.0);
+        output.depth = 0.9999999; // slightly less than 1.0 to pass depth test
+    } else {
+        // simple half lambert lighting
+        let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
+        let ambient = 0.2;
+        let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0);
+        let lighting = ambient + (1.0 - ambient) * diffuse;
+
+        output.color = vec4<f32>(result.color.rgb * lighting, result.color.a);
+        output.depth = computeDepth(viewRay, result.t);
+    }
+    return output;
 }
 )wgsl";
 

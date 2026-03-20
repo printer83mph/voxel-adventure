@@ -1,4 +1,5 @@
 add_subdirectory(dawn EXCLUDE_FROM_ALL)
 add_subdirectory(glm EXCLUDE_FROM_ALL)
+add_subdirectory(imgui EXCLUDE_FROM_ALL)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
 add_subdirectory(sdl3webgpu EXCLUDE_FROM_ALL)

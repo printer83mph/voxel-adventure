@@ -3,6 +3,9 @@
 #include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
+#include <imgui_impl_wgpu.h>
 #include <sdl3webgpu.h>
 #include <webgpu/webgpu_cpp.h>
 
@@ -12,6 +15,15 @@
 Editor::Editor() : renderer(), viewport_camera(), scene() {};
 
 auto Editor::init() -> int {
+
+    // init imgui context
+    IMGUI_CHECKVERSION();
+    this->imgui_context = ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
+
+    ImGui::StyleColorsDark();
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Initialization failed: %s", SDL_GetError());
         return EXIT_FAILURE;
@@ -144,12 +156,30 @@ auto Editor::init() -> int {
     this->scene.init_webgpu(this->wgpu.device);
     this->renderer.set_scene(&this->scene);
 
+    // initialize imgui
+    ImGui_ImplSDL3_InitForOther(this->sdl_window);
+
+    ImGui_ImplWGPU_InitInfo init_info;
+    init_info.Device = this->wgpu.device.Get();
+    init_info.RenderTargetFormat =
+        (WGPUTextureFormat)this->wgpu.preferred_format;
+    init_info.DepthStencilFormat =
+        (WGPUTextureFormat)wgpu::TextureFormat::Depth32Float;
+    ImGui_ImplWGPU_Init(&init_info);
+
     return 0;
 }
 
 Editor::~Editor() {
-    this->wgpu.surface.Unconfigure();
+    if (this->imgui_context != nullptr) {
+        ImGui::SetCurrentContext(this->imgui_context);
+        ImGui_ImplWGPU_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
+        ImGui::DestroyContext(this->imgui_context);
+        this->imgui_context = nullptr;
+    }
 
+    this->wgpu.surface.Unconfigure();
     SDL_Quit();
 }
 
@@ -205,6 +235,20 @@ auto Editor::draw_to_surface() -> void {
 
     // delegate this to our vxng::Renderer
     renderer.render(renderPass);
+
+    // setup imgui
+    ImGui_ImplWGPU_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+
+    // show basic text
+    ImGui::Begin("Hello, ImGui!");
+    ImGui::Text("This is a basic imgui window");
+    ImGui::End();
+
+    // render imgui
+    ImGui::Render();
+    ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), renderPass.Get());
 
     renderPass.End();
 
@@ -272,6 +316,11 @@ auto Editor::get_next_surface_texture_view() -> wgpu::TextureView {
 auto Editor::poll_events(bool &quit) -> void {
     SDL_Event evt;
     while (SDL_PollEvent(&evt)) {
+
+        // do imgui events first
+        ImGui_ImplSDL3_ProcessEvent(&evt);
+        ImGuiIO &io = ImGui::GetIO();
+
         switch (evt.type) {
 
         case SDL_EVENT_QUIT:
@@ -283,10 +332,14 @@ auto Editor::poll_events(bool &quit) -> void {
             break;
 
         case SDL_EVENT_KEY_DOWN:
+            if (io.WantCaptureKeyboard) // imgui takes precedence
+                break;
             handle_key_down(evt.key, &quit);
             break;
 
         case SDL_EVENT_MOUSE_MOTION:
+            if (io.WantCaptureMouse) // imgui takes precedence
+                break;
             handle_mouse_motion(evt.motion);
             break;
         }

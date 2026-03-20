@@ -19,4 +19,5 @@ target_link_libraries(${PROJECT_NAME}
         SDL3::SDL3
         dawn::webgpu_dawn
         sdl3webgpu
+        imgui
 )

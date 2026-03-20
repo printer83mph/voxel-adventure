@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 4.2)
 project(voxel-adventure VERSION 0.0.0 LANGUAGES C CXX)
 
 if(APPLE)
-    enable_language(OBJC)
+    enable_language(OBJC OBJCXX)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)

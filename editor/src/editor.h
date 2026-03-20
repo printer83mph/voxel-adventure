@@ -3,6 +3,7 @@
 #include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>
+#include <imgui.h>
 #include <webgpu/webgpu_cpp.h>
 
 class Editor {
@@ -14,6 +15,7 @@ class Editor {
     auto run() -> void;
 
   private:
+    ImGuiContext *imgui_context;
     SDL_Window *sdl_window;
     struct {
         wgpu::Device device;

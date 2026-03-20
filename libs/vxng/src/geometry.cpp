@@ -1,4 +1,4 @@
-#include "geometry.h"
+#include "vxng/geometry.h"
 
 namespace vxng::geometry {
 

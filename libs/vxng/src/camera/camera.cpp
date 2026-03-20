@@ -55,4 +55,22 @@ auto Camera::update_webgpu() -> void {
                       &this->fovy_rad, sizeof(float));
 }
 
+auto Camera::screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray {
+    // screen_pos is assumed to be in NDC coordinates [-1, 1]
+    // create ray dir in camera space based on fov
+    float tan_half_fovy = glm::tan(this->fovy_rad * 0.5f);
+    glm::vec3 camera_dir = glm::normalize(glm::vec3(
+        // ray points down negative z (into the screen)
+        screen_pos.x * tan_half_fovy, screen_pos.y * tan_half_fovy, -1.0f));
+
+    // convert to world space
+    glm::vec3 world_dir = glm::normalize(this->rotation * camera_dir);
+
+    geometry::Ray ray;
+    ray.origin = this->position;
+    ray.direction = world_dir;
+
+    return ray;
+}
+
 } // namespace vxng::camera

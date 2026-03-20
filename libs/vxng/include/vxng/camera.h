@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vxng/geometry.h"
+
 #include <glm/glm.hpp>
 #include <webgpu/webgpu_cpp.h>
 
@@ -16,6 +18,9 @@ class Camera {
     /** Creates buffer for use in shader programs */
     auto init_webgpu(wgpu::Device device) -> void;
     auto get_buffer() const -> wgpu::Buffer;
+
+    /** Creates world-space ray based on an NDC screen position */
+    auto screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray;
 
   protected:
     Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad);

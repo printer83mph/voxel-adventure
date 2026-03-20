@@ -1,6 +1,7 @@
 #pragma once
 
-#include "glm/fwd.hpp"
+#include "vxng/geometry.h"
+
 #include <glm/glm.hpp>
 #include <webgpu/webgpu_cpp.h>
 
@@ -35,6 +36,11 @@ typedef struct GPUChunkMetadata {
     float size;
 } GPUChunkMetadata;
 
+typedef struct RaycastResult {
+    float t;
+    glm::vec3 normal;
+} RaycastResult;
+
 class Chunk {
   public:
     Chunk(glm::vec3 pos, float scale, int resolution);
@@ -43,6 +49,8 @@ class Chunk {
     auto init_webgpu(wgpu::Device device) -> void;
     /** For rendering: we can hook up bindgroup to render this chunk */
     auto get_bindgroup() const -> wgpu::BindGroup;
+
+    auto raycast(const geometry::Ray &ray) const -> RaycastResult;
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,
                           glm::u8vec4 color) -> void;

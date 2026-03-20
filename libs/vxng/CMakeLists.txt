@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME}
     src/camera/orbit-camera.cpp
     src/scene/chunk.cpp
     src/scene/scene.cpp
+    src/geometry.cpp
     src/renderer.cpp
 )
 

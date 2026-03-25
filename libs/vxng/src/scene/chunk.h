@@ -45,6 +45,7 @@ class Chunk {
     /** For rendering: we can hook up bindgroup to render this chunk */
     auto get_bindgroup() const -> wgpu::BindGroup;
 
+    auto get_bounds() const -> geometry::AABB;
     auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,

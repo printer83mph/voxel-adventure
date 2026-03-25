@@ -36,6 +36,14 @@ auto Chunk::get_bindgroup() const -> wgpu::BindGroup {
     return this->wgpu.bindgroup;
 }
 
+auto Chunk::get_bounds() const -> geometry::AABB {
+    float half_size = scale * 0.5f;
+    geometry::AABB bounds;
+    bounds.min = position - glm::vec3(half_size);
+    bounds.max = position + glm::vec3(half_size);
+    return bounds;
+}
+
 auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // If no octree, return miss
     if (!root_node) {
@@ -43,10 +51,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     }
 
     // Compute root AABB from chunk position and scale
-    float half_size = scale * 0.5f;
-    geometry::AABB root_aabb;
-    root_aabb.min = position - glm::vec3(half_size);
-    root_aabb.max = position + glm::vec3(half_size);
+    geometry::AABB root_aabb = get_bounds();
 
     // Check if ray hits root AABB at all
     float root_t = 0.0f;

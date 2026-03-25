@@ -4,7 +4,8 @@
 namespace vxng::camera {
 
 Camera::Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad)
-    : position(position), rotation(rotation), fovy_rad(fovy_rad) {}
+    : position(position), rotation(rotation), fovy_rad(fovy_rad),
+      aspect_ratio(1.0f) {}
 
 Camera::Camera() : Camera(glm::vec3(0.f), glm::mat3(1.f), 0.7) {};
 
@@ -61,7 +62,8 @@ auto Camera::screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray {
     float tan_half_fovy = glm::tan(this->fovy_rad * 0.5f);
     glm::vec3 camera_dir = glm::normalize(glm::vec3(
         // ray points down negative z (into the screen)
-        screen_pos.x * tan_half_fovy, screen_pos.y * tan_half_fovy, -1.0f));
+        screen_pos.x * tan_half_fovy * this->aspect_ratio,
+        screen_pos.y * tan_half_fovy, -1.0f));
 
     // convert to world space
     glm::vec3 world_dir = glm::normalize(this->rotation * camera_dir);
@@ -71,6 +73,10 @@ auto Camera::screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray {
     ray.direction = world_dir;
 
     return ray;
+}
+
+auto Camera::set_aspect_ratio(float aspect_ratio) -> void {
+    this->aspect_ratio = aspect_ratio;
 }
 
 } // namespace vxng::camera

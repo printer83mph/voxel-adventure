@@ -151,6 +151,7 @@ auto Editor::init() -> int {
     this->renderer.resize(width, height);
 
     this->viewport_camera.init_webgpu(this->wgpu.device);
+    this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
     this->renderer.set_active_camera(&this->viewport_camera);
 
     this->scene.init_webgpu(this->wgpu.device);
@@ -354,6 +355,7 @@ auto Editor::handle_resize(int width, int height) -> void {
 
     // update info for shaders etc
     this->renderer.resize(width, height);
+    this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
 }
 
 auto random_float() -> float {

@@ -25,6 +25,28 @@ auto Scene::get_chunks() const
     return this->chunks;
 }
 
+auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
+    // scan through chunks for any intersections
+    float _; // dummy t value
+    for (const auto &chunk_pair : this->chunks) {
+        Chunk *chunk = chunk_pair.second.get();
+        geometry::AABB chunk_bounds = chunk->get_bounds();
+        if (!geometry::ray_aabb_intersect(ray, chunk_bounds, &_))
+            continue;
+
+        // this ray intersects this chunk, let's continue with raycast
+        geometry::RaycastResult chunk_result = chunk->raycast(ray);
+        if (chunk_result.t >= 0) {
+            return chunk_result;
+        }
+    }
+
+    // we hit nothing!
+    geometry::RaycastResult result;
+    result.t = -1.f;
+    return result;
+}
+
 auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
     -> void {
     glm::ivec3 chunk_coord =

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vxng/geometry.h"
+
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
@@ -19,6 +21,7 @@ class Scene {
 
     auto init_webgpu(wgpu::Device device) -> void;
 
+    auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
     auto set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
         -> void;
 

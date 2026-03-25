@@ -43,5 +43,9 @@ class Editor {
         glm::vec3 target, normal;
     } pointer;
 
+    struct {
+        SDL_Cursor *normal, *pointer, *orbit_camera, *zoom_camera, *pan_camera;
+    } cursors;
+
     auto update_pointer_target() -> void;
 };

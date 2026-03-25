@@ -1,5 +1,6 @@
 #include "editor.h"
 
+#include "SDL3/SDL_mouse.h"
 #include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>
@@ -37,6 +38,14 @@ auto Editor::init() -> int {
                      "Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    // setup sdl cursors
+    this->cursors.normal = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+    this->cursors.pointer = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+    this->cursors.orbit_camera = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    this->cursors.pan_camera = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    this->cursors.zoom_camera =
+        SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
 
     // setup webgpu instance
     wgpu::InstanceDescriptor instance_desc = {};
@@ -387,10 +396,13 @@ auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
     if (mods & SDL_KMOD_ALT) {
         if (event.state & SDL_BUTTON_LMASK) {
             this->viewport_camera.handle_rotation(event.xrel, event.yrel);
+            SDL_SetCursor(this->cursors.orbit_camera);
         } else if (event.state & SDL_BUTTON_RMASK) {
             this->viewport_camera.handle_zoom(event.yrel);
+            SDL_SetCursor(this->cursors.zoom_camera);
         } else if (event.state & SDL_BUTTON_MMASK) {
             this->viewport_camera.handle_pan(event.xrel, event.yrel);
+            SDL_SetCursor(this->cursors.pan_camera);
         }
     } else {
         // no button held, track mouse position
@@ -420,10 +432,10 @@ auto Editor::update_pointer_target() -> void {
         this->pointer.normal = raycast_result.normal;
         this->pointer.is_active = true;
 
-        std::cout << "Pointer hit (" << this->pointer.target.x << ", "
-                  << this->pointer.target.y << ", " << this->pointer.target.z
-                  << ")" << std::endl;
+        SDL_SetCursor(this->cursors.pointer);
     } else {
         this->pointer.is_active = false;
+
+        SDL_SetCursor(this->cursors.normal);
     }
 }

@@ -1,6 +1,5 @@
 #include "editor.h"
 
-#include "SDL3/SDL_mouse.h"
 #include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>

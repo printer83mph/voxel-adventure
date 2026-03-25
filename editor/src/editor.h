@@ -37,4 +37,11 @@ class Editor {
     auto handle_resize(int width, int height) -> void;
     auto handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void;
     auto handle_mouse_motion(SDL_MouseMotionEvent event) -> void;
+
+    struct {
+        bool is_active;
+        glm::vec3 target, normal;
+    } pointer;
+
+    auto update_pointer_target() -> void;
 };

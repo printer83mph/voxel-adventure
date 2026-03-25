@@ -8,28 +8,29 @@ auto ray_aabb_intersect(const Ray &ray, const AABB &aabb, float *t) -> bool {
     const float invDirY = 1.0f / ray.direction.y;
     const float invDirZ = 1.0f / ray.direction.z;
 
-    float tNear = 0.0f;
-    float tFar = std::numeric_limits<float>::max();
-
     float t0X = (aabb.min.x - ray.origin.x) * invDirX;
     float t1X = (aabb.max.x - ray.origin.x) * invDirX;
+    if (t0X > t1X)
+        std::swap(t0X, t1X);
 
     float t0Y = (aabb.min.y - ray.origin.y) * invDirY;
     float t1Y = (aabb.max.y - ray.origin.y) * invDirY;
+    if (t0Y > t1Y)
+        std::swap(t0Y, t1Y);
 
     float t0Z = (aabb.min.z - ray.origin.z) * invDirZ;
     float t1Z = (aabb.max.z - ray.origin.z) * invDirZ;
+    if (t0Z > t1Z)
+        std::swap(t0Z, t1Z);
 
-    tNear = std::max({t0X, t1X, t0Y, t1Y, t0Z, t1Z});
-
-    tFar = std::min({t0X, t1X, t0Y, t1Y, t0Z, t1Z});
+    float tNear = std::max({t0X, t0Y, t0Z});
+    float tFar = std::min({t1X, t1Y, t1Z});
 
     if (tNear > tFar) {
         return false;
     }
 
     *t = tNear;
-
     return true;
 }
 

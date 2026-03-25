@@ -14,6 +14,11 @@ typedef struct AABB {
     glm::vec3 max;
 } AABB;
 
+typedef struct RaycastResult {
+    float t; // Should be -1 if nothing hit
+    glm::vec3 normal;
+} RaycastResult;
+
 /**
  * Checks if a ray intersects an axis-aligned box (AABB).
  */

@@ -36,10 +36,10 @@ auto Chunk::get_bindgroup() const -> wgpu::BindGroup {
     return this->wgpu.bindgroup;
 }
 
-auto Chunk::raycast(const geometry::Ray &ray) const -> RaycastResult {
+auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // If no octree, return miss
     if (!root_node) {
-        return RaycastResult{-1.0f, glm::vec3(0.0f)};
+        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
     }
 
     // Compute root AABB from chunk position and scale
@@ -51,7 +51,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> RaycastResult {
     // Check if ray hits root AABB at all
     float root_t = 0.0f;
     if (!geometry::ray_aabb_intersect(ray, root_aabb, &root_t)) {
-        return RaycastResult{-1.0f, glm::vec3(0.0f)};
+        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
     }
 
     // Stack for iterative DFS traversal
@@ -63,7 +63,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> RaycastResult {
     std::vector<StackEntry> stack;
     stack.push_back({root_node.get(), root_aabb});
 
-    RaycastResult closest_hit{-1.0f, glm::vec3(0.0f)};
+    geometry::RaycastResult closest_hit{-1.0f, glm::vec3(0.0f)};
     float closest_t = 1e30f;
 
     while (!stack.empty()) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vxng/geometry.h"
+
 #include <glm/glm.hpp>
 #include <webgpu/webgpu_cpp.h>
 
@@ -17,6 +19,13 @@ class Camera {
     auto init_webgpu(wgpu::Device device) -> void;
     auto get_buffer() const -> wgpu::Buffer;
 
+    /** Creates world-space ray based on an NDC screen position */
+    auto screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray;
+
+    /** Updates the aspect ratio (width / height) for screen-to-ray conversion
+     */
+    auto set_aspect_ratio(float aspect_ratio) -> void;
+
   protected:
     Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad);
     Camera();
@@ -28,6 +37,7 @@ class Camera {
     glm::vec3 position;
     glm::mat3 rotation;
     float fovy_rad;
+    float aspect_ratio;
 
   private:
     struct {

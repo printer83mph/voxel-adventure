@@ -1,6 +1,7 @@
 #pragma once
 
-#include "glm/fwd.hpp"
+#include "vxng/geometry.h"
+
 #include <glm/glm.hpp>
 #include <webgpu/webgpu_cpp.h>
 
@@ -43,6 +44,9 @@ class Chunk {
     auto init_webgpu(wgpu::Device device) -> void;
     /** For rendering: we can hook up bindgroup to render this chunk */
     auto get_bindgroup() const -> wgpu::BindGroup;
+
+    auto get_bounds() const -> geometry::AABB;
+    auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,
                           glm::u8vec4 color) -> void;

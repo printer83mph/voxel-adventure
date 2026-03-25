@@ -36,6 +36,99 @@ auto Chunk::get_bindgroup() const -> wgpu::BindGroup {
     return this->wgpu.bindgroup;
 }
 
+auto Chunk::get_bounds() const -> geometry::AABB {
+    float half_size = scale * 0.5f;
+    geometry::AABB bounds;
+    bounds.min = position - glm::vec3(half_size);
+    bounds.max = position + glm::vec3(half_size);
+    return bounds;
+}
+
+auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
+    // If no octree, return miss
+    if (!root_node) {
+        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
+    }
+
+    // Compute root AABB from chunk position and scale
+    geometry::AABB root_aabb = get_bounds();
+
+    // Check if ray hits root AABB at all
+    float root_t = 0.0f;
+    if (!geometry::ray_aabb_intersect(ray, root_aabb, &root_t)) {
+        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
+    }
+
+    // Stack for iterative DFS traversal
+    struct StackEntry {
+        const OctreeNode *node;
+        geometry::AABB aabb;
+    };
+
+    std::vector<StackEntry> stack;
+    stack.push_back({root_node.get(), root_aabb});
+
+    geometry::RaycastResult closest_hit{-1.0f, glm::vec3(0.0f)};
+    float closest_t = 1e30f;
+
+    while (!stack.empty()) {
+        StackEntry entry = stack.back();
+        stack.pop_back();
+
+        const OctreeNode *node = entry.node;
+        const geometry::AABB &aabb = entry.aabb;
+
+        // Check if this is a leaf node (no children)
+        if (node->is_leaf) {
+            // Raycast against this leaf's AABB
+            float t = 0.0f;
+            if (geometry::ray_aabb_intersect(ray, aabb, &t)) {
+                // Check if this is the closest hit so far
+                if (t >= 0.0f && t < closest_t) {
+                    closest_t = t;
+
+                    // Compute hit point and normal
+                    glm::vec3 hit_point = ray.origin + t * ray.direction;
+                    closest_hit.normal =
+                        geometry::compute_aabb_normal(aabb, hit_point);
+                    closest_hit.t = t;
+                }
+            }
+        } else {
+            // Internal node - push children onto stack in reverse order (for
+            // DFS) We want to visit them in order 0-7, so push in reverse 7-0
+            for (int i = 7; i >= 0; --i) {
+                if (node->children[i]) {
+                    // Compute child AABB
+                    glm::vec3 mid = (aabb.min + aabb.max) * 0.5f;
+                    geometry::AABB child_aabb;
+
+                    // Octant bit layout: xyz
+                    child_aabb.min.x = (i & 1) ? mid.x : aabb.min.x;
+                    child_aabb.min.y = (i & 2) ? mid.y : aabb.min.y;
+                    child_aabb.min.z = (i & 4) ? mid.z : aabb.min.z;
+
+                    child_aabb.max.x = (i & 1) ? aabb.max.x : mid.x;
+                    child_aabb.max.y = (i & 2) ? aabb.max.y : mid.y;
+                    child_aabb.max.z = (i & 4) ? aabb.max.z : mid.z;
+
+                    // Check if ray could hit this child AABB before closest hit
+                    float child_t = 0.0f;
+                    if (geometry::ray_aabb_intersect(ray, child_aabb,
+                                                     &child_t)) {
+                        if (child_t >= 0.0f && child_t < closest_t) {
+                            stack.push_back(
+                                {node->children[i].get(), child_aabb});
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return closest_hit;
+}
+
 auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
                              glm::u8vec4 color) -> void {
     if (!this->root_node) {

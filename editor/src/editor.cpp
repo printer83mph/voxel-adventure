@@ -1,5 +1,6 @@
 #include "editor.h"
 
+#include "SDL3/SDL_mouse.h"
 #include "vxng/vxng.h"
 
 #include <SDL3/SDL.h>
@@ -37,6 +38,14 @@ auto Editor::init() -> int {
                      "Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    // setup sdl cursors
+    this->cursors.normal = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+    this->cursors.pointer = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+    this->cursors.orbit_camera = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    this->cursors.pan_camera = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    this->cursors.zoom_camera =
+        SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
 
     // setup webgpu instance
     wgpu::InstanceDescriptor instance_desc = {};
@@ -151,6 +160,7 @@ auto Editor::init() -> int {
     this->renderer.resize(width, height);
 
     this->viewport_camera.init_webgpu(this->wgpu.device);
+    this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
     this->renderer.set_active_camera(&this->viewport_camera);
 
     this->scene.init_webgpu(this->wgpu.device);
@@ -354,6 +364,7 @@ auto Editor::handle_resize(int width, int height) -> void {
 
     // update info for shaders etc
     this->renderer.resize(width, height);
+    this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
 }
 
 auto random_float() -> float {
@@ -379,17 +390,52 @@ auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
 }
 
 auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
-    // only control camera if alt is held
     SDL_Keymod mods = SDL_GetModState();
-    if (!(mods & SDL_KMOD_ALT)) {
-        return;
-    }
 
-    if (event.state & SDL_BUTTON_LMASK) {
-        this->viewport_camera.handle_rotation(event.xrel, event.yrel);
-    } else if (event.state & SDL_BUTTON_RMASK) {
-        this->viewport_camera.handle_zoom(event.yrel);
-    } else if (event.state & SDL_BUTTON_MMASK) {
-        this->viewport_camera.handle_pan(event.xrel, event.yrel);
+    // camera movement (only if alt is held)
+    if (mods & SDL_KMOD_ALT) {
+        if (event.state & SDL_BUTTON_LMASK) {
+            this->viewport_camera.handle_rotation(event.xrel, event.yrel);
+            SDL_SetCursor(this->cursors.orbit_camera);
+        } else if (event.state & SDL_BUTTON_RMASK) {
+            this->viewport_camera.handle_zoom(event.yrel);
+            SDL_SetCursor(this->cursors.zoom_camera);
+        } else if (event.state & SDL_BUTTON_MMASK) {
+            this->viewport_camera.handle_pan(event.xrel, event.yrel);
+            SDL_SetCursor(this->cursors.pan_camera);
+        }
+    } else {
+        // no button held, track mouse position
+        update_pointer_target();
+    }
+}
+
+auto Editor::update_pointer_target() -> void {
+    glm::vec2 screen_pos;
+    SDL_GetMouseState(&screen_pos.x, &screen_pos.y);
+    glm::ivec2 screen_size;
+    SDL_GetWindowSize(this->sdl_window, &screen_size.x, &screen_size.y);
+
+    // scale down to [0, 1]
+    screen_pos /= screen_size;
+
+    // flip y and scale both to [-1, 1]
+    screen_pos = (screen_pos - glm::vec2(0.5)) * glm::vec2(2.f, -2.f);
+
+    // get racyast pos in threespace
+    vxng::geometry::Ray ray = this->viewport_camera.screen_to_ray(screen_pos);
+    vxng::geometry::RaycastResult raycast_result = this->scene.raycast(ray);
+
+    if (raycast_result.t >= 0.f) {
+        glm::vec3 world_pos = ray.origin + raycast_result.t * ray.direction;
+        this->pointer.target = world_pos;
+        this->pointer.normal = raycast_result.normal;
+        this->pointer.is_active = true;
+
+        SDL_SetCursor(this->cursors.pointer);
+    } else {
+        this->pointer.is_active = false;
+
+        SDL_SetCursor(this->cursors.normal);
     }
 }

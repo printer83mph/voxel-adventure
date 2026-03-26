@@ -3,13 +3,28 @@
 #include "chunk.h"
 
 #include <memory>
+#include <stdexcept>
 
-#define CHUNK_SCALE 4.0f
-#define CHUNK_RESOLUTION 512
+#define DEFAULT_CHUNK_SCALE 4.0f
+#define DEFAULT_CHUNK_RESOLUTION 512
 
 namespace vxng::scene {
 
-Scene::Scene() {}
+Scene::Scene(int chunk_resolution, float chunk_scale)
+    : chunk_resolution(chunk_resolution), chunk_scale(chunk_scale) {
+    if (chunk_resolution <= 0 ||
+        (chunk_resolution & (chunk_resolution - 1)) == 0) {
+        throw std::invalid_argument("Chunk resolution must be a power of 2");
+    }
+
+    if (chunk_scale <= 0) {
+        throw std::invalid_argument("Chunk scale must be greater than 0");
+    }
+}
+Scene::Scene()
+    : chunk_resolution(DEFAULT_CHUNK_RESOLUTION),
+      chunk_scale(DEFAULT_CHUNK_SCALE) {}
+
 Scene::~Scene() {}
 
 auto Scene::init_webgpu(wgpu::Device device) -> void {
@@ -49,18 +64,31 @@ auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
 auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
     -> void {
-    glm::ivec3 chunk_coord =
-        glm::floor((position + glm::vec3(CHUNK_SCALE * 0.5f)) / CHUNK_SCALE);
-    glm::vec3 chunk_origin = (glm::vec3(chunk_coord) * CHUNK_SCALE);
-    glm::vec3 local_position = (position - chunk_origin) / CHUNK_SCALE;
+    glm::ivec3 chunk_coord = glm::floor(
+        (position + glm::vec3(this->chunk_scale * 0.5f)) / this->chunk_scale);
+    glm::vec3 chunk_origin = (glm::vec3(chunk_coord) * this->chunk_scale);
+    glm::vec3 local_position = (position - chunk_origin) / this->chunk_scale;
 
     if (!this->chunks[chunk_coord]) {
         this->chunks[chunk_coord] = std::make_unique<Chunk>(
-            chunk_origin, CHUNK_SCALE, CHUNK_RESOLUTION);
+            chunk_origin, this->chunk_scale, this->chunk_resolution);
         this->chunks[chunk_coord]->init_webgpu(this->wgpu.device);
     }
 
     this->chunks[chunk_coord]->set_voxel_filled(depth, local_position, color);
+}
+
+auto Scene::get_chunk_scale() const -> float { return this->chunk_scale; }
+
+auto Scene::get_chunk_resolution() const -> int {
+    return this->chunk_resolution;
+}
+
+auto Scene::set_chunk_scale(float new_scale) -> void {
+    this->chunk_scale = new_scale;
+
+    for (const auto &chunk_pair : this->chunks) {
+    }
 }
 
 } // namespace vxng::scene

@@ -394,14 +394,14 @@ auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
         *quit = true;
         break;
     case SDLK_A:
+        // add random white block
         auto rand_pos =
             (glm::vec3(random_float(), random_float(), random_float()) -
              glm::vec3(0.5f)) *
             0.99f * this->scene.get_chunk_scale();
-        auto rand_depth = rand() % 5 + 4;
-        auto rand_color =
-            glm::u8vec4(rand() % 256, rand() % 256, rand() % 256, 255);
-        this->scene.set_voxel_filled(rand_depth, rand_pos, rand_color);
+        auto rand_depth = rand() % 3 + 1;
+        auto color = glm::u8vec4(255, 255, 255, 255);
+        this->scene.set_voxel_filled(rand_depth, rand_pos, color);
         break;
     }
 }

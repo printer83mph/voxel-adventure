@@ -193,6 +193,9 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
     node->is_leaf = true;
     node->leaf_data.color = color;
 
+    // relax upwards if possible
+    try_relax_up_from_node(node);
+
     // and of course update buffers for rendering
     update_buffers();
 };

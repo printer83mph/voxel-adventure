@@ -133,6 +133,7 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
                              glm::u8vec4 color) -> void {
     if (!this->root_node) {
         this->root_node = std::make_unique<OctreeNode>();
+        this->root_node->parent = nullptr;
     }
     auto *node = this->root_node.get();
 
@@ -145,6 +146,7 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
                 node->children[i] = std::make_unique<OctreeNode>();
                 auto &child = node->children[i];
 
+                child->parent = node;
                 child->is_leaf = true;
                 child->leaf_data = node->leaf_data;
             }
@@ -161,6 +163,7 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
             node->children[child_index] = std::make_unique<OctreeNode>();
             auto &child = node->children[child_index];
 
+            child->parent = node;
             child->is_leaf = node_is_leaf;
             child->leaf_data = node->leaf_data;
         }

@@ -15,6 +15,7 @@ typedef struct VoxelData {
 } VoxelData;
 
 typedef struct OctreeNode {
+    OctreeNode *parent;
     bool is_leaf;
     VoxelData leaf_data;
     std::array<std::unique_ptr<OctreeNode>, 8> children;

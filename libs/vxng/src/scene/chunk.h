@@ -41,15 +41,30 @@ class Chunk {
     Chunk(glm::vec3 pos, float scale, int resolution);
     ~Chunk();
 
-    auto init_webgpu(wgpu::Device device) -> void;
-    /** For rendering: we can hook up bindgroup to render this chunk */
-    auto get_bindgroup() const -> wgpu::BindGroup;
+    // --------- Lifecycle ---------
 
-    auto get_bounds() const -> geometry::AABB;
+    auto init_webgpu(wgpu::Device device) -> void;
+
+    // --------- Querying ---------
+
     auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
+
+    // --------- Mutation ---------
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,
                           glm::u8vec4 color) -> void;
+
+    // --------- Utility ---------
+
+    auto get_bounds() const -> geometry::AABB;
+
+    /** Sets new position and scale, then updates buffers */
+    auto reposition(glm::vec3 pos, float scale) -> void;
+
+    // --------- Rendering ---------
+
+    /** For rendering: we can hook up bindgroup to render this chunk */
+    auto get_bindgroup() const -> wgpu::BindGroup;
 
     /** runs create_bindgroup_layout if not bindgroup_layout_created */
     static auto get_bindgroup_layout(wgpu::Device device)

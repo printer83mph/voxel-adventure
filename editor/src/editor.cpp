@@ -12,7 +12,7 @@
 #include <cstdlib>
 #include <iostream>
 
-Editor::Editor() : renderer(), viewport_camera(), scene() {};
+Editor::Editor() : renderer(), viewport_camera(), scene(512, 32.f) {};
 
 auto Editor::init() -> int {
 
@@ -201,6 +201,36 @@ auto Editor::run() -> void {
 }
 
 auto Editor::draw_to_surface() -> void {
+
+    // render UI
+    ImGui_ImplWGPU_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+
+    // show basic text
+    ImGui::Begin("Options");
+    if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen |
+                                             ImGuiTreeNodeFlags_Framed)) {
+
+        // Scene Resolution
+        float scale = this->scene.get_chunk_scale();
+        int unit_voxel_depth = glm::log2(512.f / scale);
+        int original_uvd = unit_voxel_depth;
+        ImGui::SliderInt("Resolution", &unit_voxel_depth, 1, 5);
+        ImGui::TextWrapped("This is measured in \"unit voxel depth\", i.e. how "
+                           "many depths of octrees inhabit one unit of space.");
+        if (unit_voxel_depth != original_uvd) {
+            // snap scale to powers of 2
+            float new_scale = 512.f / glm::pow(2.f, unit_voxel_depth);
+            this->scene.set_chunk_scale(new_scale);
+        }
+    }
+
+    ImGui::End();
+
+    // render imgui
+    ImGui::Render();
+
     // Get the next target texture view
     wgpu::TextureView targetView = get_next_surface_texture_view();
     if (!targetView)
@@ -245,18 +275,6 @@ auto Editor::draw_to_surface() -> void {
     // delegate this to our vxng::Renderer
     renderer.render(renderPass);
 
-    // setup imgui
-    ImGui_ImplWGPU_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-
-    // show basic text
-    ImGui::Begin("Hello, ImGui!");
-    ImGui::Text("This is a basic imgui window");
-    ImGui::End();
-
-    // render imgui
-    ImGui::Render();
     ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), renderPass.Get());
 
     renderPass.End();
@@ -379,8 +397,8 @@ auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
         auto rand_pos =
             (glm::vec3(random_float(), random_float(), random_float()) -
              glm::vec3(0.5f)) *
-            11.99f;
-        auto rand_depth = rand() % 7 + 2;
+            0.99f * this->scene.get_chunk_scale();
+        auto rand_depth = rand() % 5 + 4;
         auto rand_color =
             glm::u8vec4(rand() % 256, rand() % 256, rand() % 256, 255);
         this->scene.set_voxel_filled(rand_depth, rand_pos, rand_color);

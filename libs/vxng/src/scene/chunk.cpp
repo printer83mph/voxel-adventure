@@ -435,10 +435,10 @@ auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {
                 return node;
         }
 
-        // copy leaf data to parent and set its children to nullptr
+        // copy leaf data to parent and reset its children to nullptr
         parent->is_leaf = true;
         parent->leaf_data = node_data;
-        parent->children.fill(nullptr);
+        parent->children = {};
 
         // traverse up octree
         return try_relax_up_from_node(parent);

@@ -282,7 +282,7 @@ struct FragmentOutput {
 
 // for depth mapping
 const NEAR_PLANE: f32 = 0.1;
-const FAR_PLANE: f32 = 1000.0;
+const FAR_PLANE: f32 = 10000.0;
 
 fn computeDepth(ray: Ray, t: f32) -> f32 {
     let hitPoint = ray.origin + t * ray.direction;

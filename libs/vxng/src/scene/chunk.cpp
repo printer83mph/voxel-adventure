@@ -8,6 +8,21 @@
 
 namespace vxng::scene {
 
+auto VoxelData::operator==(const VoxelData &rhs) -> bool {
+    return this->color == rhs.color;
+}
+auto VoxelData::operator!=(const VoxelData &rhs) -> bool {
+    return !(*this == rhs);
+}
+
+auto OctreeNode::has_children() -> bool {
+    for (const auto &child : this->children) {
+        if (child)
+            return true;
+    }
+    return false;
+}
+
 // static stuffs
 wgpu::BindGroupLayout Chunk::bindgroup_layout = nullptr;
 bool Chunk::bindgroup_layout_created = false;
@@ -387,6 +402,46 @@ auto Chunk::build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
         }
 
         octree_nodes->push_back(gpu_node);
+    }
+}
+
+auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {
+    OctreeNode *parent = node->parent;
+    if (!parent)
+        return node;
+
+    if (!node->is_leaf) {
+        // internal node: do nothing if still have any children
+        if (node->has_children())
+            return node;
+
+        // delete our node child
+        for (auto &child : parent->children) {
+            if (child.get() == node) {
+                child = nullptr;
+                break;
+            }
+        }
+
+        // recurse up octree
+        return try_relax_up_from_node(parent);
+    } else {
+        // node is leaf, try to join into parent if all children match
+
+        // end recursion if not all children match
+        VoxelData &node_data = node->leaf_data;
+        for (auto &child : parent->children) {
+            if (!child || child->leaf_data != node_data)
+                return node;
+        }
+
+        // copy leaf data to parent and set its children to nullptr
+        parent->is_leaf = true;
+        parent->leaf_data = node_data;
+        parent->children.fill(nullptr);
+
+        // traverse up octree
+        return try_relax_up_from_node(parent);
     }
 }
 

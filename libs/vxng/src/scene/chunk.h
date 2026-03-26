@@ -12,6 +12,9 @@ namespace vxng::scene {
 
 typedef struct VoxelData {
     glm::u8vec4 color; // so much memory eek
+
+    auto operator==(const VoxelData &rhs) -> bool;
+    auto operator!=(const VoxelData &rhs) -> bool;
 } VoxelData;
 
 typedef struct OctreeNode {
@@ -19,6 +22,8 @@ typedef struct OctreeNode {
     bool is_leaf;
     VoxelData leaf_data;
     std::array<std::unique_ptr<OctreeNode>, 8> children;
+
+    auto has_children() -> bool;
 } OctreeNode;
 
 typedef struct GPUOctreeNode {
@@ -81,6 +86,16 @@ class Chunk {
     auto build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
                            std::vector<GPUVoxelData> *voxel_datas) const
         -> void;
+
+    /**
+     * Recursively relax this chunk's octree, starting from the given node.
+     * Will only perform relaxation if the given node either:
+     *
+     * A) is a leaf node, or
+     *
+     * B) is an internal node, but the `children` array is all `nullptr`
+     */
+    auto try_relax_up_from_node(OctreeNode *node) -> OctreeNode *;
 
     glm::vec3 position;
     float scale;

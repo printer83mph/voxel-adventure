@@ -88,6 +88,10 @@ auto Scene::set_chunk_scale(float new_scale) -> void {
     this->chunk_scale = new_scale;
 
     for (const auto &chunk_pair : this->chunks) {
+        glm::ivec3 chunk_ipos = chunk_pair.first;
+        glm::vec3 chunk_pos = glm::vec3(chunk_ipos) * new_scale;
+
+        chunk_pair.second->reposition(chunk_pos, new_scale);
     }
 }
 

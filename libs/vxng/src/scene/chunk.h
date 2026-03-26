@@ -94,6 +94,9 @@ class Chunk {
      * A) is a leaf node, or
      *
      * B) is an internal node, but the `children` array is all `nullptr`
+     *
+     * Returns a pointer to the upmost relaxed resulting node, which will be the
+     * same as the input if no relaxation was performed.
      */
     auto try_relax_up_from_node(OctreeNode *node) -> OctreeNode *;
 

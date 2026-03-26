@@ -179,6 +179,13 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
     update_buffers();
 };
 
+auto Chunk::reposition(glm::vec3 pos, float scale) -> void {
+    this->position = pos;
+    this->scale = scale;
+
+    update_buffers();
+}
+
 auto Chunk::create_bindgroup_layout(wgpu::Device device) -> void {
     wgpu::BindGroupLayoutEntry bgl_entries[3];
 

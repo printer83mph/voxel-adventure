@@ -58,6 +58,9 @@ class Chunk {
 
     auto get_bounds() const -> geometry::AABB;
 
+    /** Sets new position and scale, then updates buffers */
+    auto reposition(glm::vec3 pos, float scale) -> void;
+
     // --------- Rendering ---------
 
     /** For rendering: we can hook up bindgroup to render this chunk */

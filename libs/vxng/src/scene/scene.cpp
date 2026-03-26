@@ -13,7 +13,7 @@ namespace vxng::scene {
 Scene::Scene(int chunk_resolution, float chunk_scale)
     : chunk_resolution(chunk_resolution), chunk_scale(chunk_scale) {
     if (chunk_resolution <= 0 ||
-        (chunk_resolution & (chunk_resolution - 1)) == 0) {
+        !((chunk_resolution & (chunk_resolution - 1)) == 0)) {
         throw std::invalid_argument("Chunk resolution must be a power of 2");
     }
 
@@ -21,6 +21,7 @@ Scene::Scene(int chunk_resolution, float chunk_scale)
         throw std::invalid_argument("Chunk scale must be greater than 0");
     }
 }
+
 Scene::Scene()
     : chunk_resolution(DEFAULT_CHUNK_RESOLUTION),
       chunk_scale(DEFAULT_CHUNK_SCALE) {}

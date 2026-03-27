@@ -1,6 +1,7 @@
 #include "voxel-brush.h"
 
 #include "cursors.h"
+
 #include "imgui.h"
 
 VoxelBrush::VoxelBrush() : depth(9) {}

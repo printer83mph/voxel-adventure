@@ -28,7 +28,10 @@ wgpu::BindGroupLayout Chunk::bindgroup_layout = nullptr;
 bool Chunk::bindgroup_layout_created = false;
 
 Chunk::Chunk(glm::vec3 pos, float scale, int resolution)
-    : position(pos), scale(scale), resolution(resolution) {};
+    : position(pos), scale(scale), resolution(resolution) {
+    this->root_node = std::make_unique<OctreeNode>();
+    this->root_node->parent = nullptr;
+};
 
 Chunk::~Chunk() {
     if (!this->wgpu.initialized)
@@ -60,8 +63,8 @@ auto Chunk::get_bounds() const -> geometry::AABB {
 }
 
 auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
-    // If no octree, return miss
-    if (!root_node) {
+    // If not leaf but no children, return miss
+    if (!root_node->is_leaf && !root_node->has_children()) {
         return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
     }
 
@@ -146,11 +149,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
 auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
                              glm::u8vec4 color) -> void {
-    if (!this->root_node) {
-        this->root_node = std::make_unique<OctreeNode>();
-        this->root_node->parent = nullptr;
-    }
-    auto *node = this->root_node.get();
+    OctreeNode *node = this->root_node.get();
 
     // create required nodes to specific depth
     for (int trav_depth = 0; trav_depth < depth; ++trav_depth) {

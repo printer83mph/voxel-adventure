@@ -11,6 +11,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 
 #define SCENE_RESOLUTION 512
@@ -370,6 +371,9 @@ auto Editor::handle_open_vox_file() -> void {
 
 auto Editor::open_vox_file(void *user_data, const char *const *file_list,
                            int filter) -> void {
+    // we passed the editor through as user data
+    Editor *editor = (Editor *)user_data;
+
     if (!file_list) {
         SDL_Log("An error occured: %s", SDL_GetError());
         return;
@@ -380,7 +384,24 @@ auto Editor::open_vox_file(void *user_data, const char *const *file_list,
     }
 
     while (*file_list) {
-        SDL_Log("Full path to selected file: '%s'", *file_list);
+        // load file using fstream
+        std::ifstream file(*file_list, std::ios::binary | std::ios::ate);
+        if (!file.is_open()) {
+            SDL_Log("Failed to open file: '%s'", *file_list);
+            file_list++;
+            continue;
+        }
+
+        uint32_t buffer_size = file.tellg();
+        file.seekg(0, std::ios::beg);
+        std::vector<uint8_t> buffer(buffer_size);
+
+        file.read(reinterpret_cast<char *>(buffer.data()), buffer_size);
+        file.close();
+
+        SDL_Log("Loading vox file: '%s'", *file_list);
+        editor->scene->load_vox_file(buffer);
+
         file_list++;
     }
 }

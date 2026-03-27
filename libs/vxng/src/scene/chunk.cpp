@@ -2,6 +2,7 @@
 
 #include <webgpu/webgpu_cpp.h>
 
+#include <cmath>
 #include <memory>
 #include <queue>
 #include <stdexcept>
@@ -393,7 +394,7 @@ auto Chunk::build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
 auto Chunk::dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode * {
     OctreeNode *node = this->root_node.get();
 
-    if (depth < 0 || depth > glm::log2(this->resolution)) {
+    if (depth < 0 || depth > std::log2(this->resolution)) {
         throw std::invalid_argument(
             "Depth must be >= 0 and <= log2(resolution)");
     }

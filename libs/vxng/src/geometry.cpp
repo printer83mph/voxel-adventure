@@ -31,11 +31,11 @@ auto ray_aabb_intersect(const Ray &ray, const AABB &aabb)
         return RayAABBIntersectResult{.hit = false};
     }
 
-    // Report if inside
+    // Report if inside, and use tFar
     if (tNear < 0.0f)
         return RayAABBIntersectResult{
             .hit = true,
-            .t = 0.0f,
+            .t = tFar,
             .inside = true,
         };
 

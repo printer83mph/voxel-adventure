@@ -1,18 +1,21 @@
 #include "editor.h"
 
-#include "vxng/vxng.h"
+#include "cursors.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_wgpu.h>
 #include <sdl3webgpu.h>
+#include <vxng/vxng.h>
 #include <webgpu/webgpu_cpp.h>
 
 #include <cstdlib>
 #include <iostream>
 
-Editor::Editor() : renderer(), viewport_camera(), scene(512, 32.f) {};
+Editor::Editor()
+    : renderer(), viewport_camera(), scene(512, 32.f), cursors(), tools(),
+      current_tool(&tools.voxel_brush) {};
 
 auto Editor::init() -> int {
 
@@ -39,12 +42,7 @@ auto Editor::init() -> int {
     }
 
     // setup sdl cursors
-    this->cursors.normal = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
-    this->cursors.pointer = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
-    this->cursors.orbit_camera = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
-    this->cursors.pan_camera = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
-    this->cursors.zoom_camera =
-        SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
+    this->cursors.setup_sdl_cursors();
 
     // setup webgpu instance
     wgpu::InstanceDescriptor instance_desc = {};
@@ -364,10 +362,28 @@ auto Editor::poll_events(bool &quit) -> void {
             handle_key_down(evt.key, &quit);
             break;
 
+        case SDL_EVENT_KEY_UP:
+            if (io.WantCaptureKeyboard) // imgui takes precedence
+                break;
+            handle_key_up(evt.key);
+            break;
+
         case SDL_EVENT_MOUSE_MOTION:
             if (io.WantCaptureMouse) // imgui takes precedence
                 break;
             handle_mouse_motion(evt.motion);
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            if (io.WantCaptureMouse) // imgui takes precedence
+                break;
+            handle_mouse_down(evt.button);
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            if (io.WantCaptureMouse) // imgui takes precedence
+                break;
+            handle_mouse_up(evt.button);
             break;
         }
     }
@@ -388,7 +404,8 @@ auto random_float() -> float {
     return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 }
 
-auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
+auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
+    -> void {
     switch (event.key) {
     case SDLK_ESCAPE:
         *quit = true;
@@ -416,31 +433,88 @@ auto Editor::handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void {
         this->scene.set_voxel_empty(rand_depth, rand_pos);
         break;
     }
+
+    default: {
+        // pass off to current tool
+        glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
+        this->current_tool->handle_keyboard_event(
+            EditorTool::KeyboardEventBundle{
+                .event = &event,
+                .mouse_ndc_coords = mouse_ndc_pos,
+                .scene = &this->scene,
+                .camera = &this->viewport_camera,
+                .cursors = &this->cursors,
+            });
+    }
     }
 }
 
-auto Editor::handle_mouse_motion(SDL_MouseMotionEvent event) -> void {
+auto Editor::handle_key_up(const SDL_KeyboardEvent &event) -> void {
+    // pass off to current tool
+    glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
+    this->current_tool->handle_keyboard_event(EditorTool::KeyboardEventBundle{
+        .event = &event,
+        .mouse_ndc_coords = mouse_ndc_pos,
+        .scene = &this->scene,
+        .camera = &this->viewport_camera,
+        .cursors = &this->cursors,
+    });
+}
+
+auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
     SDL_Keymod mods = SDL_GetModState();
 
     // camera movement (only if alt is held)
     if (mods & SDL_KMOD_ALT) {
         if (event.state & SDL_BUTTON_LMASK) {
             this->viewport_camera.handle_rotation(event.xrel, event.yrel);
-            SDL_SetCursor(this->cursors.orbit_camera);
+            this->cursors.set_cursor(Cursors::Variant::MOVE);
         } else if (event.state & SDL_BUTTON_RMASK) {
             this->viewport_camera.handle_zoom(event.yrel);
-            SDL_SetCursor(this->cursors.zoom_camera);
+            this->cursors.set_cursor(Cursors::Variant::NS_RESIZE);
         } else if (event.state & SDL_BUTTON_MMASK) {
             this->viewport_camera.handle_pan(event.xrel, event.yrel);
-            SDL_SetCursor(this->cursors.pan_camera);
+            this->cursors.set_cursor(Cursors::Variant::MOVE);
         }
     } else {
-        // no button held, track mouse position
-        update_pointer_target();
+        // no mod held, pass off to current tool
+        glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
+        this->current_tool->handle_mouse_motion_event(
+            EditorTool::MouseMotionEventBundle{
+                .event = &event,
+                .mouse_ndc_coords = mouse_ndc_pos,
+                .scene = &this->scene,
+                .camera = &this->viewport_camera,
+                .cursors = &this->cursors,
+            });
     }
 }
 
-auto Editor::update_pointer_target() -> void {
+auto Editor::handle_mouse_down(const SDL_MouseButtonEvent &event) -> void {
+    glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
+    this->current_tool->handle_mouse_button_event(
+        EditorTool::MouseButtonEventBundle{
+            .event = &event,
+            .mouse_ndc_coords = mouse_ndc_pos,
+            .scene = &this->scene,
+            .camera = &this->viewport_camera,
+            .cursors = &this->cursors,
+        });
+}
+
+auto Editor::handle_mouse_up(const SDL_MouseButtonEvent &event) -> void {
+    glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
+    this->current_tool->handle_mouse_button_event(
+        EditorTool::MouseButtonEventBundle{
+            .event = &event,
+            .mouse_ndc_coords = mouse_ndc_pos,
+            .scene = &this->scene,
+            .camera = &this->viewport_camera,
+            .cursors = &this->cursors,
+        });
+}
+
+auto Editor::get_mouse_ndc_coords() const -> glm::vec2 {
     glm::vec2 screen_pos;
     SDL_GetMouseState(&screen_pos.x, &screen_pos.y);
     glm::ivec2 screen_size;
@@ -450,22 +524,5 @@ auto Editor::update_pointer_target() -> void {
     screen_pos /= screen_size;
 
     // flip y and scale both to [-1, 1]
-    screen_pos = (screen_pos - glm::vec2(0.5)) * glm::vec2(2.f, -2.f);
-
-    // get racyast pos in threespace
-    vxng::geometry::Ray ray = this->viewport_camera.screen_to_ray(screen_pos);
-    vxng::geometry::RaycastResult raycast_result = this->scene.raycast(ray);
-
-    if (raycast_result.t >= 0.f) {
-        glm::vec3 world_pos = ray.origin + raycast_result.t * ray.direction;
-        this->pointer.target = world_pos;
-        this->pointer.normal = raycast_result.normal;
-        this->pointer.is_active = true;
-
-        SDL_SetCursor(this->cursors.pointer);
-    } else {
-        this->pointer.is_active = false;
-
-        SDL_SetCursor(this->cursors.normal);
-    }
+    return (screen_pos - glm::vec2(0.5)) * glm::vec2(2.f, -2.f);
 }

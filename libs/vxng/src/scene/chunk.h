@@ -59,6 +59,7 @@ class Chunk {
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,
                           glm::u8vec4 color) -> void;
+    auto set_voxel_empty(int depth, glm::vec3 local_position) -> void;
 
     // --------- Utility ---------
 

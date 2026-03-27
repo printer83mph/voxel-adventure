@@ -164,6 +164,24 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
     update_buffers();
 };
 
+auto Chunk::set_voxel_empty(int depth, glm::vec3 local_position) -> void {
+    // dig first for the node we want to edit
+    OctreeNode *node = dig_into_tree(local_position, depth);
+
+    // we have gotten to our desired depth, now just set active node to leaf
+    node->is_leaf = false;
+    node->children = {};
+
+    // could be optimized by digging to the depth 1 above, then just setting the
+    // matching child to nullptr
+
+    // relax upwards if possible
+    try_relax_up_from_node(node);
+
+    // and of course update buffers for rendering
+    update_buffers();
+}
+
 auto Chunk::reposition(glm::vec3 pos, float scale) -> void {
     this->position = pos;
     this->scale = scale;

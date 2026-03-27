@@ -4,11 +4,12 @@
 #include "tool.h"
 #include "tools/tools.h"
 
-#include <vxng/vxng.h>
-
 #include <SDL3/SDL.h>
 #include <imgui.h>
+#include <vxng/vxng.h>
 #include <webgpu/webgpu_cpp.h>
+
+#include <memory>
 
 class Editor {
   public:
@@ -30,7 +31,7 @@ class Editor {
 
     vxng::Renderer renderer;
     vxng::camera::OrbitCamera viewport_camera;
-    vxng::scene::Scene scene;
+    std::unique_ptr<vxng::scene::Scene> scene;
 
     auto draw_to_surface() -> void;
     auto run_gui() -> void;
@@ -46,17 +47,20 @@ class Editor {
     auto handle_mouse_down(const SDL_MouseButtonEvent &event) -> void;
     auto handle_mouse_up(const SDL_MouseButtonEvent &event) -> void;
 
-    struct {
-        bool is_active;
-        glm::vec3 target, normal;
-    } pointer;
-
     Cursors cursors;
 
     struct {
         VoxelBrush voxel_brush;
     } tools;
     EditorTool *current_tool;
+
+    struct {
+        bool show_tools = true;
+        bool show_options = true;
+    } panels;
+
+    // menu options
+    auto new_empty_scene() -> void;
 
     auto get_mouse_ndc_coords() const -> glm::vec2;
 };

@@ -88,6 +88,15 @@ class Chunk {
         -> void;
 
     /**
+     * Dig into the octree, splitting nodes into children if necessary to reach
+     * the given depth. Returns a pointer to the node at the given depth.
+     *
+     * @param local_position  An internal voxel position, in range [-0.5, 0.5]
+     * @param depth           The depth to dig, maxing out at `log2(resolution)`
+     */
+    auto dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode *;
+
+    /**
      * Recursively relax this chunk's octree, starting from the given node.
      * Will only perform relaxation if the given node either:
      *

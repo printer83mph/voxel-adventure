@@ -40,11 +40,10 @@ auto Scene::get_chunks() const
 
 auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // scan through chunks for any intersections
-    float _; // dummy t value
     for (const auto &chunk_pair : this->chunks) {
         Chunk *chunk = chunk_pair.second.get();
         geometry::AABB chunk_bounds = chunk->get_bounds();
-        if (!geometry::ray_aabb_intersect(ray, chunk_bounds, &_))
+        if (!geometry::ray_aabb_intersect(ray, chunk_bounds).hit)
             continue;
 
         // this ray intersects this chunk, let's continue with raycast

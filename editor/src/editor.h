@@ -33,6 +33,7 @@ class Editor {
     vxng::scene::Scene scene;
 
     auto draw_to_surface() -> void;
+    auto run_gui() -> void;
     auto get_next_surface_texture_view() -> wgpu::TextureView;
     auto get_surface_configuration(int width, int height)
         -> wgpu::SurfaceConfiguration;

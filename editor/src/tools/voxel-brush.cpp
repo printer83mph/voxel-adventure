@@ -1,6 +1,5 @@
 #include "voxel-brush.h"
 
-#include "SDL3/SDL_mouse.h"
 #include "cursors.h"
 
 VoxelBrush::VoxelBrush() {}
@@ -62,6 +61,7 @@ auto VoxelBrush::handle_mouse_motion_event(const MouseMotionEventBundle &bundle)
     auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
     auto raycast_result = bundle.scene->raycast(mouse_ray);
 
+    // set pointer to "cursor" if raycast hit something
     if (raycast_result.t >= 0) {
         bundle.cursors->set_cursor(Cursors::Variant::POINTER);
     } else {

@@ -5,6 +5,10 @@
 #include <SDL3/SDL.h>
 #include <vxng/vxng.h>
 
+/**
+ * This abstract class should be implemented by actual tools. See implemented
+ * tools in the `src/tools/` directory.
+ */
 class EditorTool {
   public:
     EditorTool();

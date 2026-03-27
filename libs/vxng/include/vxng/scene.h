@@ -28,6 +28,7 @@ class Scene {
 
     auto set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
         -> void;
+    auto set_voxel_empty(int depth, glm::vec3 position) -> void;
 
     // --------- Utility ---------
 
@@ -45,6 +46,26 @@ class Scene {
     float chunk_scale;
     int chunk_resolution;
     std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> chunks;
+
+    typedef struct ChunkedLocationInfo {
+        glm::ivec3 chunk_coord;
+        glm::vec3 local_position;
+    } LocationInfo;
+
+    /**
+     * Given a world position, get the chunk coord at said position as well as
+     * the position's chunk-local equivalent position
+     */
+    auto get_chunked_location_info(glm::vec3 position) const
+        -> ChunkedLocationInfo;
+
+    /**
+     * Instantiates chunk (and runs webgpu init) at given coords if chunk is not
+     * yet instantiated.
+     *
+     * @return pointer to the new or existing chunk.
+     */
+    auto touch_chunk(glm::ivec3 chunk_coord) -> Chunk *;
 
     struct {
         wgpu::Device device;

@@ -2,8 +2,10 @@
 
 #include <webgpu/webgpu_cpp.h>
 
+#include <cmath>
 #include <memory>
 #include <queue>
+#include <stdexcept>
 #include <vector>
 
 namespace vxng::scene {
@@ -28,7 +30,10 @@ wgpu::BindGroupLayout Chunk::bindgroup_layout = nullptr;
 bool Chunk::bindgroup_layout_created = false;
 
 Chunk::Chunk(glm::vec3 pos, float scale, int resolution)
-    : position(pos), scale(scale), resolution(resolution) {};
+    : position(pos), scale(scale), resolution(resolution) {
+    this->root_node = std::make_unique<OctreeNode>();
+    this->root_node->parent = nullptr;
+};
 
 Chunk::~Chunk() {
     if (!this->wgpu.initialized)
@@ -60,8 +65,8 @@ auto Chunk::get_bounds() const -> geometry::AABB {
 }
 
 auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
-    // If no octree, return miss
-    if (!root_node) {
+    // If not leaf but no children, return miss
+    if (!root_node->is_leaf && !root_node->has_children()) {
         return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
     }
 
@@ -146,48 +151,8 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
 auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
                              glm::u8vec4 color) -> void {
-    if (!this->root_node) {
-        this->root_node = std::make_unique<OctreeNode>();
-        this->root_node->parent = nullptr;
-    }
-    auto *node = this->root_node.get();
-
-    // create required nodes to specific depth
-    for (int trav_depth = 0; trav_depth < depth; ++trav_depth) {
-        bool node_is_leaf = node->is_leaf;
-        if (node_is_leaf) {
-            // if we were filled, then fill all children
-            for (int i = 0; i < 8; ++i) {
-                node->children[i] = std::make_unique<OctreeNode>();
-                auto &child = node->children[i];
-
-                child->parent = node;
-                child->is_leaf = true;
-                child->leaf_data = node->leaf_data;
-            }
-        }
-        node->is_leaf = false;
-
-        // dig into specific child node based on position
-        int child_index = ((uint32_t)(local_position.x >= 0) << 0) +
-                          ((uint32_t)(local_position.y >= 0) << 1) +
-                          ((uint32_t)(local_position.z >= 0) << 2);
-
-        // make child node if not exists
-        if (!node->children[child_index]) {
-            node->children[child_index] = std::make_unique<OctreeNode>();
-            auto &child = node->children[child_index];
-
-            child->parent = node;
-            child->is_leaf = node_is_leaf;
-            child->leaf_data = node->leaf_data;
-        }
-
-        // put local position into terms of new node bounds
-        local_position = glm::fract((local_position + glm::vec3(0.5f)) * 2.0f) -
-                         glm::vec3(0.5f);
-        node = node->children[child_index].get();
-    }
+    // dig first for the node we want to edit
+    OctreeNode *node = dig_into_tree(local_position, depth);
 
     // we have gotten to our desired depth, now just set active node to leaf
     node->is_leaf = true;
@@ -199,6 +164,24 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
     // and of course update buffers for rendering
     update_buffers();
 };
+
+auto Chunk::set_voxel_empty(int depth, glm::vec3 local_position) -> void {
+    // dig first for the node we want to edit
+    OctreeNode *node = dig_into_tree(local_position, depth);
+
+    // we have gotten to our desired depth, now just set active node to leaf
+    node->is_leaf = false;
+    node->children = {};
+
+    // could be optimized by digging to the depth 1 above, then just setting the
+    // matching child to nullptr
+
+    // relax upwards if possible
+    try_relax_up_from_node(node);
+
+    // and of course update buffers for rendering
+    update_buffers();
+}
 
 auto Chunk::reposition(glm::vec3 pos, float scale) -> void {
     this->position = pos;
@@ -406,6 +389,54 @@ auto Chunk::build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
 
         octree_nodes->push_back(gpu_node);
     }
+}
+
+auto Chunk::dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode * {
+    OctreeNode *node = this->root_node.get();
+
+    if (depth < 0 || depth > std::log2(this->resolution)) {
+        throw std::invalid_argument(
+            "Depth must be >= 0 and <= log2(resolution)");
+    }
+
+    // create required nodes to specific depth
+    for (int trav_depth = 0; trav_depth < depth; ++trav_depth) {
+        bool node_is_leaf = node->is_leaf;
+        if (node_is_leaf) {
+            // if we were filled, then fill all children
+            for (int i = 0; i < 8; ++i) {
+                node->children[i] = std::make_unique<OctreeNode>();
+                auto &child = node->children[i];
+
+                child->parent = node;
+                child->is_leaf = true;
+                child->leaf_data = node->leaf_data;
+            }
+        }
+        node->is_leaf = false;
+
+        // dig into specific child node based on position
+        int child_index = ((uint32_t)(local_position.x >= 0) << 0) +
+                          ((uint32_t)(local_position.y >= 0) << 1) +
+                          ((uint32_t)(local_position.z >= 0) << 2);
+
+        // make child node if not exists
+        if (!node->children[child_index]) {
+            node->children[child_index] = std::make_unique<OctreeNode>();
+            auto &child = node->children[child_index];
+
+            child->parent = node;
+            child->is_leaf = node_is_leaf;
+            child->leaf_data = node->leaf_data;
+        }
+
+        // put local position into terms of new node bounds
+        local_position = glm::fract((local_position + glm::vec3(0.5f)) * 2.0f) -
+                         glm::vec3(0.5f);
+        node = node->children[child_index].get();
+    }
+
+    return node;
 }
 
 auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {

@@ -59,6 +59,7 @@ class Chunk {
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,
                           glm::u8vec4 color) -> void;
+    auto set_voxel_empty(int depth, glm::vec3 local_position) -> void;
 
     // --------- Utility ---------
 
@@ -86,6 +87,15 @@ class Chunk {
     auto build_buffer_data(std::vector<GPUOctreeNode> *octree_nodes,
                            std::vector<GPUVoxelData> *voxel_datas) const
         -> void;
+
+    /**
+     * Dig into the octree, splitting nodes into children if necessary to reach
+     * the given depth. Returns a pointer to the node at the given depth.
+     *
+     * @param local_position  An internal voxel position, in range [-0.5, 0.5]
+     * @param depth           The depth to dig, maxing out at `log2(resolution)`
+     */
+    auto dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode *;
 
     /**
      * Recursively relax this chunk's octree, starting from the given node.

@@ -28,6 +28,7 @@ class Scene {
 
     auto set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
         -> void;
+    auto set_voxel_empty(int depth, glm::vec3 position) -> void;
 
     // --------- Utility ---------
 

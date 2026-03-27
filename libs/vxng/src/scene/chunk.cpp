@@ -67,7 +67,7 @@ auto Chunk::get_bounds() const -> geometry::AABB {
 auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // If not leaf but no children, return miss
     if (!root_node->is_leaf && !root_node->has_children()) {
-        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
+        return geometry::RaycastResult{.hit = false};
     }
 
     // Compute root AABB from chunk position and scale
@@ -75,7 +75,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
     // Check if ray hits root AABB at all
     if (!geometry::ray_aabb_intersect(ray, root_aabb).hit) {
-        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
+        return geometry::RaycastResult{.hit = false};
     }
 
     // Stack for iterative DFS traversal
@@ -87,7 +87,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     std::vector<StackEntry> stack;
     stack.push_back({root_node.get(), root_aabb});
 
-    geometry::RaycastResult closest_hit{-1.0f, glm::vec3(0.0f)};
+    geometry::RaycastResult closest_hit{.hit = false};
     float closest_t = 1e30f;
 
     while (!stack.empty()) {
@@ -108,9 +108,11 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
                     // Compute hit point and normal
                     glm::vec3 hit_point = ray.origin + result.t * ray.direction;
+                    closest_hit.hit = true;
+                    closest_hit.t = result.t;
+                    closest_hit.inside = result.inside;
                     closest_hit.normal =
                         geometry::compute_aabb_normal(aabb, hit_point);
-                    closest_hit.t = result.t;
                 }
             }
         } else {
@@ -134,12 +136,8 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
                     // Check if ray could hit this child AABB before closest hit
                     auto child_result =
                         geometry::ray_aabb_intersect(ray, child_aabb);
-                    if (child_result.hit) {
-                        if (child_result.t >= 0.0f &&
-                            child_result.t < closest_t) {
-                            stack.push_back(
-                                {node->children[i].get(), child_aabb});
-                        }
+                    if (child_result.hit && child_result.t < closest_t) {
+                        stack.push_back({node->children[i].get(), child_aabb});
                     }
                 }
             }

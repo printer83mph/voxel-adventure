@@ -21,7 +21,9 @@ typedef struct RayAABBIntersectResult {
 } RayAABBIntersectResult;
 
 typedef struct RaycastResult {
-    float t; // Should be -1 if nothing hit
+    bool hit;
+    float t;
+    bool inside;
     glm::vec3 normal;
 } RaycastResult;
 

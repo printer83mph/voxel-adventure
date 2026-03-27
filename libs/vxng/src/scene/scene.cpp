@@ -65,18 +65,11 @@ auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
 auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
     -> void {
-    glm::ivec3 chunk_coord = glm::floor(
-        (position + glm::vec3(this->chunk_scale * 0.5f)) / this->chunk_scale);
-    glm::vec3 chunk_origin = (glm::vec3(chunk_coord) * this->chunk_scale);
-    glm::vec3 local_position = (position - chunk_origin) / this->chunk_scale;
+    auto chunked_location = get_chunked_location_info(position);
+    Chunk *target_chunk = touch_chunk(chunked_location.chunk_coord);
 
-    if (!this->chunks[chunk_coord]) {
-        this->chunks[chunk_coord] = std::make_unique<Chunk>(
-            chunk_origin, this->chunk_scale, this->chunk_resolution);
-        this->chunks[chunk_coord]->init_webgpu(this->wgpu.device);
-    }
-
-    this->chunks[chunk_coord]->set_voxel_filled(depth, local_position, color);
+    target_chunk->set_voxel_filled(depth, chunked_location.local_position,
+                                   color);
 }
 
 auto Scene::get_chunk_scale() const -> float { return this->chunk_scale; }

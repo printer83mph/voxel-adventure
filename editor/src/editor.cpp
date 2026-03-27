@@ -39,7 +39,7 @@ auto Editor::init() -> int {
 
     // create window
     this->sdl_window =
-        SDL_CreateWindow("My Funny Window", 800, 600, SDL_WINDOW_RESIZABLE);
+        SDL_CreateWindow("Voxel Editor", 800, 600, SDL_WINDOW_RESIZABLE);
     if (!sdl_window) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM,
                      "Couldn't create window/renderer: %s", SDL_GetError());

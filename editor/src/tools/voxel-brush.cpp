@@ -2,7 +2,9 @@
 
 #include "cursors.h"
 
-VoxelBrush::VoxelBrush() {}
+#include "imgui.h"
+
+VoxelBrush::VoxelBrush() : depth(9) {}
 
 VoxelBrush::~VoxelBrush() {}
 
@@ -11,7 +13,9 @@ auto VoxelBrush::get_tool_name() -> const char * {
 }
 
 // no ui for this yet
-auto VoxelBrush::render_ui() -> void {}
+auto VoxelBrush::render_ui() -> void {
+    ImGui::SliderInt("Depth", &this->depth, 0, 9);
+}
 
 auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
     -> void {
@@ -42,7 +46,7 @@ auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
         glm::vec3 exterior_target_pos =
             target_pos + raycast_result.normal * 0.00001f;
 
-        bundle.scene->set_voxel_filled(9, exterior_target_pos,
+        bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
                                        glm::u8vec4(255, 0, 0, 255));
         break;
     }
@@ -50,7 +54,7 @@ auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
         // go inside voxel boundary
         glm::vec3 interior_target_pos =
             target_pos - raycast_result.normal * 0.00001f;
-        bundle.scene->set_voxel_empty(9, interior_target_pos);
+        bundle.scene->set_voxel_empty(this->depth, interior_target_pos);
         break;
     }
     }
@@ -62,7 +66,7 @@ auto VoxelBrush::handle_mouse_motion_event(const MouseMotionEventBundle &bundle)
     auto raycast_result = bundle.scene->raycast(mouse_ray);
 
     // set pointer to "cursor" if raycast hit something
-    if (raycast_result.t >= 0) {
+    if (raycast_result.hit) {
         bundle.cursors->set_cursor(Cursors::Variant::POINTER);
     } else {
         bundle.cursors->set_cursor(Cursors::Variant::DEFAULT);

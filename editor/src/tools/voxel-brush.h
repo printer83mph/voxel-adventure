@@ -16,4 +16,7 @@ class VoxelBrush : public EditorTool {
         -> void override;
     auto handle_keyboard_event(const KeyboardEventBundle &bundle)
         -> void override;
+
+  private:
+    int depth;
 };

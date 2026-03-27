@@ -48,15 +48,12 @@ auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
         // this ray intersects this chunk, let's continue with raycast
         geometry::RaycastResult chunk_result = chunk->raycast(ray);
-        if (chunk_result.t >= 0) {
+        if (chunk_result.hit)
             return chunk_result;
-        }
     }
 
     // we hit nothing!
-    geometry::RaycastResult result;
-    result.t = -1.f;
-    return result;
+    return geometry::RaycastResult{.hit = false};
 }
 
 auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)

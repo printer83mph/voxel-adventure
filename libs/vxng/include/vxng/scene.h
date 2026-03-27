@@ -1,5 +1,6 @@
 #pragma once
 
+#include "glm/fwd.hpp"
 #include "vxng/geometry.h"
 
 #include <glm/glm.hpp>
@@ -41,6 +42,13 @@ class Scene {
     /** Internal method, for renderer to render chunks */
     auto get_chunks() const
         -> const std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>> &;
+
+    // --------- Scene setup helpers ---------
+
+    /**
+     * Fills bottom 4 octants of root chunk with the given color.
+     */
+    auto fill_basic_plane(glm::u8vec4 color) -> void;
 
   private:
     float chunk_scale;

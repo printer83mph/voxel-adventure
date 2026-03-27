@@ -38,6 +38,16 @@ auto Scene::get_chunks() const
     return this->chunks;
 }
 
+auto Scene::fill_basic_plane(glm::u8vec4 color) -> void {
+    // set 4 base plates filled
+    float delta = this->chunk_scale / (float)this->chunk_resolution * 0.5f;
+
+    this->set_voxel_filled(1, {delta, -delta, delta}, color);
+    this->set_voxel_filled(1, {-delta, -delta, delta}, color);
+    this->set_voxel_filled(1, {-delta, -delta, -delta}, color);
+    this->set_voxel_filled(1, {delta, -delta, -delta}, color);
+}
+
 auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // scan through chunks for any intersections
     for (const auto &chunk_pair : this->chunks) {

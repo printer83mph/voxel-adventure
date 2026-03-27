@@ -14,15 +14,24 @@ typedef struct AABB {
     glm::vec3 max;
 } AABB;
 
+typedef struct RayAABBIntersectResult {
+    bool hit;
+    float t;
+    bool inside;
+} RayAABBIntersectResult;
+
 typedef struct RaycastResult {
-    float t; // Should be -1 if nothing hit
+    bool hit;
+    float t;
+    bool inside;
     glm::vec3 normal;
 } RaycastResult;
 
 /**
  * Checks if a ray intersects an axis-aligned box (AABB).
  */
-auto ray_aabb_intersect(const Ray &ray, const AABB &aabb, float *t) -> bool;
+auto ray_aabb_intersect(const Ray &ray, const AABB &aabb)
+    -> RayAABBIntersectResult;
 
 /**
  * Computes the normal of the intersection point with an octant (AABB).

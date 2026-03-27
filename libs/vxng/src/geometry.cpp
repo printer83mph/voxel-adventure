@@ -3,7 +3,8 @@
 namespace vxng::geometry {
 
 // implementation based on libs/vxng/src/wgsl/chunk.wgsl.cpp
-auto ray_aabb_intersect(const Ray &ray, const AABB &aabb, float *t) -> bool {
+auto ray_aabb_intersect(const Ray &ray, const AABB &aabb)
+    -> RayAABBIntersectResult {
     const float invDirX = 1.0f / ray.direction.x;
     const float invDirY = 1.0f / ray.direction.y;
     const float invDirZ = 1.0f / ray.direction.z;
@@ -27,11 +28,22 @@ auto ray_aabb_intersect(const Ray &ray, const AABB &aabb, float *t) -> bool {
     float tFar = std::min({t1X, t1Y, t1Z});
 
     if (tNear > tFar) {
-        return false;
+        return RayAABBIntersectResult{.hit = false};
     }
 
-    *t = tNear;
-    return true;
+    // Report if inside, and use tFar
+    if (tNear < 0.0f)
+        return RayAABBIntersectResult{
+            .hit = true,
+            .t = tFar,
+            .inside = true,
+        };
+
+    return RayAABBIntersectResult{
+        .hit = true,
+        .t = tNear,
+        .inside = false,
+    };
 }
 
 auto compute_aabb_normal(const AABB &aabb, glm::vec3 intersection)

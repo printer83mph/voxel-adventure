@@ -67,16 +67,15 @@ auto Chunk::get_bounds() const -> geometry::AABB {
 auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // If not leaf but no children, return miss
     if (!root_node->is_leaf && !root_node->has_children()) {
-        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
+        return geometry::RaycastResult{.hit = false};
     }
 
     // Compute root AABB from chunk position and scale
     geometry::AABB root_aabb = get_bounds();
 
     // Check if ray hits root AABB at all
-    float root_t = 0.0f;
-    if (!geometry::ray_aabb_intersect(ray, root_aabb, &root_t)) {
-        return geometry::RaycastResult{-1.0f, glm::vec3(0.0f)};
+    if (!geometry::ray_aabb_intersect(ray, root_aabb).hit) {
+        return geometry::RaycastResult{.hit = false};
     }
 
     // Stack for iterative DFS traversal
@@ -88,7 +87,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     std::vector<StackEntry> stack;
     stack.push_back({root_node.get(), root_aabb});
 
-    geometry::RaycastResult closest_hit{-1.0f, glm::vec3(0.0f)};
+    geometry::RaycastResult closest_hit{.hit = false};
     float closest_t = 1e30f;
 
     while (!stack.empty()) {
@@ -101,17 +100,19 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
         // Check if this is a leaf node (no children)
         if (node->is_leaf) {
             // Raycast against this leaf's AABB
-            float t = 0.0f;
-            if (geometry::ray_aabb_intersect(ray, aabb, &t)) {
+            auto result = geometry::ray_aabb_intersect(ray, aabb);
+            if (result.hit) {
                 // Check if this is the closest hit so far
-                if (t >= 0.0f && t < closest_t) {
-                    closest_t = t;
+                if (result.t >= 0.0f && result.t < closest_t) {
+                    closest_t = result.t;
 
                     // Compute hit point and normal
-                    glm::vec3 hit_point = ray.origin + t * ray.direction;
+                    glm::vec3 hit_point = ray.origin + result.t * ray.direction;
+                    closest_hit.hit = true;
+                    closest_hit.t = result.t;
+                    closest_hit.inside = result.inside;
                     closest_hit.normal =
                         geometry::compute_aabb_normal(aabb, hit_point);
-                    closest_hit.t = t;
                 }
             }
         } else {
@@ -133,13 +134,10 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
                     child_aabb.max.z = (i & 4) ? aabb.max.z : mid.z;
 
                     // Check if ray could hit this child AABB before closest hit
-                    float child_t = 0.0f;
-                    if (geometry::ray_aabb_intersect(ray, child_aabb,
-                                                     &child_t)) {
-                        if (child_t >= 0.0f && child_t < closest_t) {
-                            stack.push_back(
-                                {node->children[i].get(), child_aabb});
-                        }
+                    auto child_result =
+                        geometry::ray_aabb_intersect(ray, child_aabb);
+                    if (child_result.hit && child_result.t < closest_t) {
+                        stack.push_back({node->children[i].get(), child_aabb});
                     }
                 }
             }

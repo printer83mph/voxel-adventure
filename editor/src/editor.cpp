@@ -13,9 +13,14 @@
 #include <cstdlib>
 #include <iostream>
 
+#define SCENE_RESOLUTION 512
+#define DEFAULT_SCENE_SCALE 32.f
+
 Editor::Editor()
-    : renderer(), viewport_camera(), scene(512, 32.f), cursors(), tools(),
-      current_tool(&tools.voxel_brush) {};
+    : renderer(), viewport_camera(),
+      scene(std::make_unique<vxng::scene::Scene>(SCENE_RESOLUTION,
+                                                 DEFAULT_SCENE_SCALE)),
+      cursors(), tools(), current_tool(&tools.voxel_brush) {};
 
 auto Editor::init() -> int {
 
@@ -160,8 +165,8 @@ auto Editor::init() -> int {
     this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
     this->renderer.set_active_camera(&this->viewport_camera);
 
-    this->scene.init_webgpu(this->wgpu.device);
-    this->renderer.set_scene(&this->scene);
+    this->scene->init_webgpu(this->wgpu.device);
+    this->renderer.set_scene(this->scene.get());
 
     // initialize imgui
     ImGui_ImplSDL3_InitForOther(this->sdl_window);
@@ -278,8 +283,8 @@ auto Editor::run_gui() -> void {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New")) {
-                // TODO: Implement
+            if (ImGui::MenuItem("New (Empty)")) {
+                this->new_empty_scene();
             }
             if (ImGui::MenuItem("Open")) {
                 // TODO: Implement
@@ -306,7 +311,7 @@ auto Editor::run_gui() -> void {
         if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
 
             // Scene Resolution
-            float scale = this->scene.get_chunk_scale();
+            float scale = this->scene->get_chunk_scale();
             int unit_voxel_depth = glm::log2(512.f / scale);
             int original_uvd = unit_voxel_depth;
             ImGui::SliderInt("Resolution", &unit_voxel_depth, 1, 5);
@@ -316,7 +321,7 @@ auto Editor::run_gui() -> void {
             if (unit_voxel_depth != original_uvd) {
                 // snap scale to powers of 2
                 float new_scale = 512.f / glm::pow(2.f, unit_voxel_depth);
-                this->scene.set_chunk_scale(new_scale);
+                this->scene->set_chunk_scale(new_scale);
             }
         }
         ImGui::End();
@@ -468,10 +473,10 @@ auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
         auto rand_pos =
             (glm::vec3(random_float(), random_float(), random_float()) -
              glm::vec3(0.5f)) *
-            0.99f * this->scene.get_chunk_scale();
+            0.99f * this->scene->get_chunk_scale();
         auto rand_depth = rand() % 3 + 1;
         auto color = glm::u8vec4(255, 255, 255, 255);
-        this->scene.set_voxel_filled(rand_depth, rand_pos, color);
+        this->scene->set_voxel_filled(rand_depth, rand_pos, color);
         break;
     }
 
@@ -480,9 +485,9 @@ auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
         auto rand_pos =
             (glm::vec3(random_float(), random_float(), random_float()) -
              glm::vec3(0.5f)) *
-            0.99f * this->scene.get_chunk_scale();
+            0.99f * this->scene->get_chunk_scale();
         auto rand_depth = rand() % 3 + 1;
-        this->scene.set_voxel_empty(rand_depth, rand_pos);
+        this->scene->set_voxel_empty(rand_depth, rand_pos);
         break;
     }
 
@@ -493,7 +498,7 @@ auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
             EditorTool::KeyboardEventBundle{
                 .event = &event,
                 .mouse_ndc_coords = mouse_ndc_pos,
-                .scene = &this->scene,
+                .scene = this->scene.get(),
                 .camera = &this->viewport_camera,
                 .cursors = &this->cursors,
             });
@@ -507,7 +512,7 @@ auto Editor::handle_key_up(const SDL_KeyboardEvent &event) -> void {
     this->current_tool->handle_keyboard_event(EditorTool::KeyboardEventBundle{
         .event = &event,
         .mouse_ndc_coords = mouse_ndc_pos,
-        .scene = &this->scene,
+        .scene = this->scene.get(),
         .camera = &this->viewport_camera,
         .cursors = &this->cursors,
     });
@@ -535,7 +540,7 @@ auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
             EditorTool::MouseMotionEventBundle{
                 .event = &event,
                 .mouse_ndc_coords = mouse_ndc_pos,
-                .scene = &this->scene,
+                .scene = this->scene.get(),
                 .camera = &this->viewport_camera,
                 .cursors = &this->cursors,
             });
@@ -548,7 +553,7 @@ auto Editor::handle_mouse_down(const SDL_MouseButtonEvent &event) -> void {
         EditorTool::MouseButtonEventBundle{
             .event = &event,
             .mouse_ndc_coords = mouse_ndc_pos,
-            .scene = &this->scene,
+            .scene = this->scene.get(),
             .camera = &this->viewport_camera,
             .cursors = &this->cursors,
         });
@@ -560,10 +565,19 @@ auto Editor::handle_mouse_up(const SDL_MouseButtonEvent &event) -> void {
         EditorTool::MouseButtonEventBundle{
             .event = &event,
             .mouse_ndc_coords = mouse_ndc_pos,
-            .scene = &this->scene,
+            .scene = this->scene.get(),
             .camera = &this->viewport_camera,
             .cursors = &this->cursors,
         });
+}
+
+auto Editor::new_empty_scene() -> void {
+    // create new scene object
+    this->scene = std::make_unique<vxng::scene::Scene>(SCENE_RESOLUTION,
+                                                       DEFAULT_SCENE_SCALE);
+    this->scene->init_webgpu(this->wgpu.device);
+
+    this->renderer.set_scene(this->scene.get());
 }
 
 auto Editor::get_mouse_ndc_coords() const -> glm::vec2 {

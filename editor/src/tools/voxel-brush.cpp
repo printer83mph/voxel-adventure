@@ -27,8 +27,8 @@ auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
     auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
     auto raycast_result = bundle.scene->raycast(mouse_ray);
 
-    // if nothing hit, do nothing
-    if (raycast_result.t < 0) {
+    // if nothing hit or we're inside something, do nothing
+    if (!raycast_result.hit || raycast_result.inside) {
         return;
     }
 

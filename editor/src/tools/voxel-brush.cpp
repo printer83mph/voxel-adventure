@@ -1,5 +1,6 @@
 #include "voxel-brush.h"
 
+#include "SDL3/SDL_mouse.h"
 #include "cursors.h"
 
 VoxelBrush::VoxelBrush() {}
@@ -34,12 +35,26 @@ auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
 
     glm::vec3 target_pos =
         mouse_ray.origin + raycast_result.t * mouse_ray.direction;
-    // go outside of voxel boundary
-    glm::vec3 exterior_target_pos = target_pos + raycast_result.normal * 0.001f;
 
     // set voxel filled!
-    bundle.scene->set_voxel_filled(9, exterior_target_pos,
-                                   glm::u8vec4(255, 0, 0, 255));
+    switch (bundle.event->button) {
+    case SDL_BUTTON_LEFT: {
+        // go outside of voxel boundary
+        glm::vec3 exterior_target_pos =
+            target_pos + raycast_result.normal * 0.00001f;
+
+        bundle.scene->set_voxel_filled(9, exterior_target_pos,
+                                       glm::u8vec4(255, 0, 0, 255));
+        break;
+    }
+    case SDL_BUTTON_RIGHT: {
+        // go inside voxel boundary
+        glm::vec3 interior_target_pos =
+            target_pos - raycast_result.normal * 0.00001f;
+        bundle.scene->set_voxel_empty(9, interior_target_pos);
+        break;
+    }
+    }
 }
 
 auto VoxelBrush::handle_mouse_motion_event(const MouseMotionEventBundle &bundle)

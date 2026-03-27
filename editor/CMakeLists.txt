@@ -6,6 +6,7 @@ target_sources(${PROJECT_NAME}
     PRIVATE
         src/editor.cpp
         src/main.cpp
+        src/tool.cpp
 )
 
 target_include_directories(${PROJECT_NAME}

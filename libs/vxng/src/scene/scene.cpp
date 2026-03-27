@@ -96,4 +96,35 @@ auto Scene::set_chunk_scale(float new_scale) -> void {
     }
 }
 
+auto Scene::get_chunked_location_info(glm::vec3 position) const
+    -> ChunkedLocationInfo {
+    glm::ivec3 chunk_coord = glm::floor(
+        (position + glm::vec3(this->chunk_scale * 0.5f)) / this->chunk_scale);
+    glm::vec3 chunk_origin = glm::vec3(chunk_coord) * this->chunk_scale;
+    glm::vec3 local_position = (position - chunk_origin) / this->chunk_scale;
+
+    return ChunkedLocationInfo{
+        .chunk_coord = chunk_coord,
+        .local_position = local_position,
+    };
+}
+
+auto Scene::touch_chunk(glm::ivec3 chunk_coord) -> Chunk * {
+    // if chunk already exists just grab it
+    if (this->chunks.find(chunk_coord) != this->chunks.end()) {
+        return this->chunks[chunk_coord].get();
+    }
+
+    // otherwise, we gotta create the chunk
+    glm::vec3 chunk_origin = glm::vec3(chunk_coord) * this->chunk_scale;
+    this->chunks[chunk_coord] = std::make_unique<Chunk>(
+        chunk_origin, this->chunk_scale, this->chunk_resolution);
+    auto &new_chunk = this->chunks[chunk_coord];
+
+    // and init webgpu
+    new_chunk->init_webgpu(this->wgpu.device);
+
+    return new_chunk.get();
+}
+
 } // namespace vxng::scene

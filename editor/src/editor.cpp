@@ -273,10 +273,11 @@ auto Editor::draw_to_surface() -> void {
 }
 
 auto Editor::run_gui() -> void {
-    // Options menu
+
+    // --------- Options menu ---------
+
     ImGui::Begin("Options");
-    if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen |
-                                             ImGuiTreeNodeFlags_Framed)) {
+    if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         // Scene Resolution
         float scale = this->scene.get_chunk_scale();
@@ -290,6 +291,27 @@ auto Editor::run_gui() -> void {
             float new_scale = 512.f / glm::pow(2.f, unit_voxel_depth);
             this->scene.set_chunk_scale(new_scale);
         }
+    }
+    ImGui::End();
+
+    // --------- Tool menu ---------
+
+    ImGui::Begin("Tools");
+
+    bool is_voxel_brush_selected =
+        this->current_tool == &this->tools.voxel_brush;
+    if (ImGui::RadioButton("Voxel Brush", is_voxel_brush_selected))
+        this->current_tool = &this->tools.voxel_brush;
+    ImGui::TextWrapped("More tools on the way!");
+
+    // spacer
+    ImGui::Dummy(ImVec2(0.0f, 24.0f));
+
+    // tool options section
+    auto tool_name = std::string(this->current_tool->get_tool_name());
+    if (ImGui::CollapsingHeader((tool_name + "###ToolMenu").c_str(),
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
+        this->current_tool->render_ui();
     }
     ImGui::End();
 }

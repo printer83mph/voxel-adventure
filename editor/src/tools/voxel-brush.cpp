@@ -62,7 +62,7 @@ auto VoxelBrush::handle_mouse_motion_event(const MouseMotionEventBundle &bundle)
     auto raycast_result = bundle.scene->raycast(mouse_ray);
 
     // set pointer to "cursor" if raycast hit something
-    if (raycast_result.t >= 0) {
+    if (raycast_result.hit) {
         bundle.cursors->set_cursor(Cursors::Variant::POINTER);
     } else {
         bundle.cursors->set_cursor(Cursors::Variant::DEFAULT);

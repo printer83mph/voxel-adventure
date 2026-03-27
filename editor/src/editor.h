@@ -46,17 +46,17 @@ class Editor {
     auto handle_mouse_down(const SDL_MouseButtonEvent &event) -> void;
     auto handle_mouse_up(const SDL_MouseButtonEvent &event) -> void;
 
-    struct {
-        bool is_active;
-        glm::vec3 target, normal;
-    } pointer;
-
     Cursors cursors;
 
     struct {
         VoxelBrush voxel_brush;
     } tools;
     EditorTool *current_tool;
+
+    struct {
+        bool show_tools = true;
+        bool show_options = true;
+    } panels;
 
     auto get_mouse_ndc_coords() const -> glm::vec2;
 };

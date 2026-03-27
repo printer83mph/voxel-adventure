@@ -274,46 +274,76 @@ auto Editor::draw_to_surface() -> void {
 
 auto Editor::run_gui() -> void {
 
+    // --------- Title/File menu ---------
+
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New")) {
+                // TODO: Implement
+            }
+            if (ImGui::MenuItem("Open")) {
+                // TODO: Implement
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Panels")) {
+            if (ImGui::MenuItem("Tools", NULL, this->panels.show_tools))
+                this->panels.show_tools = !this->panels.show_tools;
+
+            if (ImGui::MenuItem("Options", NULL, this->panels.show_options))
+                this->panels.show_options = !this->panels.show_options;
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
     // --------- Options menu ---------
 
-    ImGui::Begin("Options");
-    if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (this->panels.show_options) {
+        ImGui::Begin("Options");
+        if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        // Scene Resolution
-        float scale = this->scene.get_chunk_scale();
-        int unit_voxel_depth = glm::log2(512.f / scale);
-        int original_uvd = unit_voxel_depth;
-        ImGui::SliderInt("Resolution", &unit_voxel_depth, 1, 5);
-        ImGui::TextWrapped("This is measured in \"unit voxel depth\", i.e. how "
-                           "many depths of octrees inhabit one unit of space.");
-        if (unit_voxel_depth != original_uvd) {
-            // snap scale to powers of 2
-            float new_scale = 512.f / glm::pow(2.f, unit_voxel_depth);
-            this->scene.set_chunk_scale(new_scale);
+            // Scene Resolution
+            float scale = this->scene.get_chunk_scale();
+            int unit_voxel_depth = glm::log2(512.f / scale);
+            int original_uvd = unit_voxel_depth;
+            ImGui::SliderInt("Resolution", &unit_voxel_depth, 1, 5);
+            ImGui::TextWrapped(
+                "This is measured in \"unit voxel depth\", i.e. how "
+                "many depths of octrees inhabit one unit of space.");
+            if (unit_voxel_depth != original_uvd) {
+                // snap scale to powers of 2
+                float new_scale = 512.f / glm::pow(2.f, unit_voxel_depth);
+                this->scene.set_chunk_scale(new_scale);
+            }
         }
+        ImGui::End();
     }
-    ImGui::End();
 
     // --------- Tool menu ---------
 
-    ImGui::Begin("Tools");
+    if (this->panels.show_tools) {
+        ImGui::Begin("Tools");
 
-    bool is_voxel_brush_selected =
-        this->current_tool == &this->tools.voxel_brush;
-    if (ImGui::RadioButton("Voxel Brush", is_voxel_brush_selected))
-        this->current_tool = &this->tools.voxel_brush;
-    ImGui::TextWrapped("More tools on the way!");
+        bool is_voxel_brush_selected =
+            this->current_tool == &this->tools.voxel_brush;
+        if (ImGui::RadioButton("Voxel Brush", is_voxel_brush_selected))
+            this->current_tool = &this->tools.voxel_brush;
+        ImGui::TextWrapped("More tools on the way!");
 
-    // spacer
-    ImGui::Dummy(ImVec2(0.0f, 24.0f));
+        // spacer
+        ImGui::Dummy(ImVec2(0.0f, 24.0f));
 
-    // tool options section
-    auto tool_name = std::string(this->current_tool->get_tool_name());
-    if (ImGui::CollapsingHeader((tool_name + "###ToolMenu").c_str(),
-                                ImGuiTreeNodeFlags_DefaultOpen)) {
-        this->current_tool->render_ui();
+        // tool options section
+        auto tool_name = std::string(this->current_tool->get_tool_name());
+        if (ImGui::CollapsingHeader((tool_name + "###ToolMenu").c_str(),
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+            this->current_tool->render_ui();
+        }
+        ImGui::End();
     }
-    ImGui::End();
 }
 
 auto Editor::get_surface_configuration(int width, int height)

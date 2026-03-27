@@ -2,6 +2,7 @@
 
 #include "chunk.h"
 
+#include <limits>
 #include <memory>
 #include <stdexcept>
 
@@ -50,6 +51,10 @@ auto Scene::fill_basic_plane(glm::u8vec4 color) -> void {
 
 auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // scan through chunks for any intersections
+    geometry::RaycastResult closest_hit;
+    closest_hit.hit = false;
+    closest_hit.t = std::numeric_limits<float>::max();
+
     for (const auto &chunk_pair : this->chunks) {
         Chunk *chunk = chunk_pair.second.get();
         geometry::AABB chunk_bounds = chunk->get_bounds();
@@ -58,12 +63,11 @@ auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 
         // this ray intersects this chunk, let's continue with raycast
         geometry::RaycastResult chunk_result = chunk->raycast(ray);
-        if (chunk_result.hit)
-            return chunk_result;
+        if (chunk_result.hit && chunk_result.t < closest_hit.t)
+            closest_hit = chunk_result;
     }
 
-    // we hit nothing!
-    return geometry::RaycastResult{.hit = false};
+    return closest_hit;
 }
 
 auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)

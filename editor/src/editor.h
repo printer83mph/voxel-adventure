@@ -1,6 +1,10 @@
 #pragma once
 
-#include "vxng/vxng.h"
+#include "cursors.h"
+#include "tool.h"
+#include "tools/tools.h"
+
+#include <vxng/vxng.h>
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -35,17 +39,23 @@ class Editor {
 
     auto poll_events(bool &quit) -> void;
     auto handle_resize(int width, int height) -> void;
-    auto handle_key_down(SDL_KeyboardEvent event, bool *quit) -> void;
-    auto handle_mouse_motion(SDL_MouseMotionEvent event) -> void;
+    auto handle_key_down(const SDL_KeyboardEvent &event, bool *quit) -> void;
+    auto handle_key_up(const SDL_KeyboardEvent &event) -> void;
+    auto handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void;
+    auto handle_mouse_down(const SDL_MouseButtonEvent &event) -> void;
+    auto handle_mouse_up(const SDL_MouseButtonEvent &event) -> void;
 
     struct {
         bool is_active;
         glm::vec3 target, normal;
     } pointer;
 
-    struct {
-        SDL_Cursor *normal, *pointer, *orbit_camera, *zoom_camera, *pan_camera;
-    } cursors;
+    Cursors cursors;
 
-    auto update_pointer_target() -> void;
+    struct {
+        VoxelBrush voxel_brush;
+    } tools;
+    EditorTool *current_tool;
+
+    auto get_mouse_ndc_coords() const -> glm::vec2;
 };

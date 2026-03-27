@@ -29,11 +29,8 @@ Scene::Scene()
 Scene::~Scene() {}
 
 auto Scene::init_webgpu(wgpu::Device device) -> void {
-    auto origin_chunk = std::make_unique<Chunk>(glm::vec3(0), 4.0, 512);
-    origin_chunk->init_webgpu(device);
-
-    this->chunks[glm::ivec3(0)] = std::move(origin_chunk);
     this->wgpu.device = device;
+    touch_chunk(glm::ivec3(0.f));
 }
 
 auto Scene::get_chunks() const

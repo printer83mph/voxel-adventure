@@ -295,7 +295,7 @@ auto Editor::run_gui() -> void {
                 ImGui::EndMenu();
             }
             if (ImGui::MenuItem("Open")) {
-                // TODO: Implement
+                this->handle_open_vox_file();
             }
             ImGui::EndMenu();
         }
@@ -356,6 +356,32 @@ auto Editor::run_gui() -> void {
             this->current_tool->render_ui();
         }
         ImGui::End();
+    }
+}
+
+const SDL_DialogFileFilter Editor::vox_filters[] = {
+    {.name = "MagicaVoxel files", .pattern = "vox"},
+};
+
+auto Editor::handle_open_vox_file() -> void {
+    SDL_ShowOpenFileDialog(&open_vox_file, this, this->sdl_window, vox_filters,
+                           1, NULL, false);
+}
+
+auto Editor::open_vox_file(void *user_data, const char *const *file_list,
+                           int filter) -> void {
+    if (!file_list) {
+        SDL_Log("An error occured: %s", SDL_GetError());
+        return;
+    } else if (!*file_list) {
+        SDL_Log("The user did not select any file.");
+        SDL_Log("Most likely, the dialog was canceled.");
+        return;
+    }
+
+    while (*file_list) {
+        SDL_Log("Full path to selected file: '%s'", *file_list);
+        file_list++;
     }
 }
 

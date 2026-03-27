@@ -1,14 +1,16 @@
 #pragma once
 
-#include <vxng/vxng.h>
+#include "cursors.h"
 
 #include <SDL3/SDL.h>
+#include <vxng/vxng.h>
 
 typedef struct KeyboardEventBundle {
     const SDL_KeyboardEvent *event;
     glm::vec2 mouse_ndc_coords;
     vxng::scene::Scene *scene;
     vxng::camera::Camera *camera;
+    Cursors *cursors;
 } KeyboardEventBundle;
 
 typedef struct MouseButtonEventBundle {
@@ -16,6 +18,7 @@ typedef struct MouseButtonEventBundle {
     glm::vec2 mouse_ndc_coords;
     vxng::scene::Scene *scene;
     vxng::camera::Camera *camera;
+    Cursors *cursors;
 } MouseButtonEventBundle;
 
 typedef struct MouseMotionEventBundle {
@@ -23,6 +26,7 @@ typedef struct MouseMotionEventBundle {
     glm::vec2 mouse_ndc_coords;
     vxng::scene::Scene *scene;
     vxng::camera::Camera *camera;
+    Cursors *cursors;
 } MouseMotionEventBundle;
 
 class EditorTool {

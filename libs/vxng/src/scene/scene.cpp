@@ -61,6 +61,41 @@ auto Scene::load_vox_file(const std::vector<uint8_t> &buffer) -> void {
 
         std::cout << "model found: " << model->size_x << "x" << model->size_y
                   << "x" << model->size_z << std::endl;
+
+        int voxel_count = model->size_x * model->size_y * model->size_z;
+
+        std::array<glm::u8vec4, 256> palette = {};
+        for (int i = 0; i < 256; ++i) {
+            const ogt_vox_rgba &color = scene->palette.color[i];
+            palette[i] = glm::u8vec4(color.r, color.g, color.b, 255);
+        }
+
+        // convert coordinate systems (swap Y and Z)
+        // MagicaVoxel: X, Y (up), Z
+        // Our scene:   X, Z (up), Y
+        std::vector<uint8_t> transformed_voxel_data(voxel_count, 0);
+
+        for (int x = 0; x < model->size_x; ++x) {
+            for (int y = 0; y < model->size_y; ++y) {
+                for (int z = 0; z < model->size_z; ++z) {
+                    // Original index (MagicaVoxel coordinates)
+                    int src_idx = x + (y * model->size_x) +
+                                  (z * model->size_x * model->size_y);
+
+                    // New index (swapped Y and Z)
+                    int dst_idx = x + (z * model->size_x) +
+                                  (y * model->size_x * model->size_z);
+
+                    transformed_voxel_data[dst_idx] =
+                        model->voxel_data[src_idx];
+                }
+            }
+        }
+
+        this->chunks[{0, 0, 0}]->set_voxel_grid_data(
+            transformed_voxel_data.data(),
+            {model->size_x, model->size_y, model->size_z}, palette,
+            {256, 256, 256});
     }
 
     ogt_vox_destroy_scene(scene);

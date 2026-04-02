@@ -7,6 +7,7 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 namespace vxng::scene {
 
@@ -58,8 +59,12 @@ class Chunk {
     // --------- Mutation ---------
 
     auto set_voxel_filled(int depth, glm::vec3 local_position,
-                          glm::u8vec4 color) -> void;
+                          glm::u8vec4 color, bool skip_update_buffers = false)
+        -> void;
     auto set_voxel_empty(int depth, glm::vec3 local_position) -> void;
+    auto set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
+                             const std::array<glm::u8vec4, 256> &palette,
+                             glm::ivec3 offset) -> void;
 
     // --------- Utility ---------
 
@@ -96,6 +101,19 @@ class Chunk {
      * @param depth           The depth to dig, maxing out at `log2(resolution)`
      */
     auto dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode *;
+
+    /**
+     * Creates octree internal nodes everywhere within this chunk, up to the
+     * given depth. Should generally be followed by `get_grid_pointers` to get
+     * a structured array of pointers to the new octree nodes.
+     */
+    auto dig_to_depth_everywhere(int depth) -> void;
+
+    /**
+     * Gets a structured array of pointers to octree nodes at a certain depth.
+     * Should be run after `dig_to_depth_everywhere` for grid-based operations.
+     */
+    auto get_grid_pointers(int depth) -> std::vector<OctreeNode *>;
 
     /**
      * Recursively relax this chunk's octree, starting from the given node.

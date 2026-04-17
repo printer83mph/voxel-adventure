@@ -2,6 +2,7 @@
 
 #include "chunk.h"
 
+#include <glm/gtx/string_cast.hpp>
 #include <ogt/ogt_vox.h>
 
 #include <iostream>
@@ -100,6 +101,44 @@ auto Scene::load_vox_file(const std::vector<uint8_t> &buffer) -> void {
 
     ogt_vox_destroy_scene(scene);
 }
+
+#ifndef NDEBUG
+auto Scene::debug_print_chunk_structure(glm::ivec3 chunk_coord) -> void {
+    if (this->chunks.find(chunk_coord) == this->chunks.end()) {
+        std::cout << "The requested chunk " << glm::to_string(chunk_coord)
+                  << " does not exist!" << std::endl;
+        return;
+    }
+
+    this->chunks[chunk_coord]->debug_print_structure();
+}
+
+auto Scene::debug_dig_to_depth_in_chunk_area(glm::ivec3 chunk_coord, int depth,
+                                             glm::ivec3 min_coord,
+                                             glm::ivec3 max_coord) -> void {
+
+    if (this->chunks.find(chunk_coord) == this->chunks.end()) {
+        std::cout << "The requested chunk " << glm::to_string(chunk_coord)
+                  << " does not exist!" << std::endl;
+        return;
+    }
+
+    this->chunks[chunk_coord]->debug_dig_to_depth_in_area(depth, min_coord,
+                                                          max_coord);
+    this->chunks[chunk_coord]->debug_update_buffers();
+}
+
+auto Scene::debug_try_relax_chunk(glm::ivec3 chunk_coord) -> void {
+    if (this->chunks.find(chunk_coord) == this->chunks.end()) {
+        std::cout << "The requested chunk " << glm::to_string(chunk_coord)
+                  << " does not exist!" << std::endl;
+        return;
+    }
+
+    this->chunks[chunk_coord]->debug_try_relax_chunk();
+    this->chunks[chunk_coord]->debug_update_buffers();
+}
+#endif
 
 auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // scan through chunks for any intersections

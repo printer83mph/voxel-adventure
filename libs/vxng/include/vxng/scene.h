@@ -52,6 +52,14 @@ class Scene {
 
     auto load_vox_file(const std::vector<uint8_t> &buffer) -> void;
 
+#ifndef NDEBUG // debug methods
+    auto debug_print_chunk_structure(glm::ivec3 chunk_coord) -> void;
+    auto debug_dig_to_depth_in_chunk_area(glm::ivec3 chunk_coord, int depth,
+                                          glm::ivec3 min_coord,
+                                          glm::ivec3 max_coord) -> void;
+    auto debug_try_relax_chunk(glm::ivec3 chunk_coord) -> void;
+#endif
+
   private:
     float chunk_scale;
     int chunk_resolution;

@@ -1,6 +1,9 @@
 #include "chunk.h"
 
 #include <cassert>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+#include <iostream>
 #include <webgpu/webgpu_cpp.h>
 
 #include <cmath>
@@ -40,6 +43,23 @@ auto OctreeNode::init_all_children() -> void {
     }
 
     this->is_leaf = false;
+}
+
+auto OctreeNode::pipe_out(std::ostream &outs, int indentation = 0) const
+    -> std::ostream & {
+    std::string indent(indentation, ' ');
+    outs << indent << "NODE\n";
+    outs << indent << "is_leaf: " << this->is_leaf << "\n";
+    outs << indent
+         << "leaf_data.color: " << glm::to_string(this->leaf_data.color)
+         << "\n";
+    for (int i = 0; i < 8; ++i) {
+        if (this->children[i]) {
+            outs << indent << "child " << i << ": " << "\n";
+            this->children[i]->pipe_out(outs, indentation + 4);
+        }
+    }
+    return outs;
 }
 
 // static stuffs
@@ -213,10 +233,12 @@ auto Chunk::set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
     // assume indices are:
     // x + (y * model->size_x) + (z * model->size_x * model->size_y)
 
-    // very jank, we can optimize much better by digging out octree structure in
-    // our region of effect first, and getting a grid-layout vector of
-    // OctreeNode pointers/refs to mutate with our data
+    // dig around
+    int max_depth = std::log2(this->resolution);
+    DigAreaResult dig_result =
+        this->dig_to_depth_in_area(max_depth, offset, offset + size);
 
+    // set values
     for (int x = 0; x < size.x; ++x) {
         int filled = 0;
         for (int y = 0; y < size.y; ++y) {
@@ -225,17 +247,14 @@ auto Chunk::set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
 
                 auto palette_index = data[voxel_index];
                 if (palette_index == 0)
-                    continue;
+                    continue; // don't do anything if voxel empty
 
                 glm::u8vec4 color = palette[palette_index];
 
-                glm::vec3 coord = glm::ivec3(x, y, z) + offset;
-                glm::vec3 local_position =
-                    glm::vec3(-0.5) +
-                    glm::vec3(1.0f / (float)this->resolution) * coord;
-
-                this->set_voxel_filled(9, local_position, color, true);
-                filled++;
+                OctreeNode *leaf_node =
+                    dig_result.nodes[dig_result.get_node_idx({x, y, z})];
+                leaf_node->is_leaf = true;
+                leaf_node->leaf_data = {.color = color};
             }
         }
     }
@@ -284,6 +303,22 @@ auto Chunk::get_bindgroup_layout(wgpu::Device device) -> wgpu::BindGroupLayout {
 
     return bindgroup_layout;
 }
+
+#ifndef NDEBUG
+auto Chunk::debug_print_structure() -> void {
+    this->root_node->pipe_out(std::cout, 0);
+    std::cout << std::endl;
+}
+
+auto Chunk::debug_dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
+                                       glm::ivec3 max_coord) -> void {
+    this->dig_to_depth_in_area(depth, min_coord, max_coord);
+}
+
+auto Chunk::debug_try_relax_chunk() -> void { this->try_relax_chunk(); }
+
+auto Chunk::debug_update_buffers() -> void { this->update_buffers(); }
+#endif
 
 auto Chunk::update_buffers() -> void {
     std::vector<GPUOctreeNode> octree_nodes;

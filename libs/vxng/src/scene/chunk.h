@@ -26,6 +26,7 @@ typedef struct OctreeNode {
 
     auto has_children() -> bool;
     auto init_all_children() -> void;
+    auto pipe_out(std::ostream &outs, int indentation) const -> std::ostream &;
 } OctreeNode;
 
 typedef struct GPUOctreeNode {
@@ -82,6 +83,15 @@ class Chunk {
     /** runs create_bindgroup_layout if not bindgroup_layout_created */
     static auto get_bindgroup_layout(wgpu::Device device)
         -> wgpu::BindGroupLayout;
+
+// debug
+#ifndef NDEBUG
+    auto debug_print_structure() -> void;
+    auto debug_dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
+                                    glm::ivec3 max_coord) -> void;
+    auto debug_try_relax_chunk() -> void;
+    auto debug_update_buffers() -> void;
+#endif
 
   private:
     static wgpu::BindGroupLayout bindgroup_layout; // shared bindgroup layout

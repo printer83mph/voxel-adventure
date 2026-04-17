@@ -317,8 +317,8 @@ auto Editor::run_gui() -> void {
                 scene->debug_print_chunk_structure({0, 0, 0});
             }
             if (ImGui::MenuItem("Dig to depth in root chunk")) {
-                scene->debug_dig_to_depth_in_chunk_area({0, 0, 0}, 3, {2, 2, 2},
-                                                        {6, 6, 6});
+                scene->debug_dig_to_depth_in_chunk_area(
+                    {0, 0, 0}, 3, glm::ivec3(3), glm::ivec3(5));
             }
             if (ImGui::MenuItem("Relax root chunk")) {
                 scene->debug_try_relax_chunk({0, 0, 0});

@@ -49,7 +49,7 @@ auto OctreeNode::pipe_out(std::ostream &outs, int indentation = 0) const
     -> std::ostream & {
     std::string indent(indentation, ' ');
     outs << indent << "NODE\n";
-    outs << indent << "is_leaf: " << this->is_leaf << "\n";
+    outs << indent << "is_leaf: " << (this->is_leaf ? "true" : "false") << "\n";
     outs << indent
          << "leaf_data.color: " << glm::to_string(this->leaf_data.color)
          << "\n";
@@ -561,7 +561,7 @@ auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
 
     typedef struct NodeQueueEntry {
         int depth;
-        OctreeNode *node;
+        std::unique_ptr<OctreeNode> *node;
         geometry::AABB bounds;
     } NodeQueueEntry;
 
@@ -569,18 +569,14 @@ auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
     std::queue<NodeQueueEntry> node_queue = {};
     node_queue.push(NodeQueueEntry{
         .depth = 0,
-        .node = this->root_node.get(),
-        .bounds = {.min = glm::vec3(-0.5), .max = glm::vec3(0.5)}});
+        .node = &this->root_node,
+        .bounds = {.min = glm::vec3(-0.5), .max = glm::vec3(0.5)},
+    });
 
     // build and traverse queue, digging into intersecting nodes
     while (!node_queue.empty()) {
         NodeQueueEntry entry = node_queue.front();
-
-        // ignore this node if we don't intersect with the desired area
-        if (!geometry::aabb_aabb_intersect(entry.bounds, local_area)) {
-            node_queue.pop();
-            continue;
-        }
+        auto &node = *entry.node;
 
         // if we've reached max depth, add this node to the output vector
         if (entry.depth == depth) {
@@ -589,16 +585,13 @@ auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
             glm::ivec3 local_coord = grid_coord - min_coord;
 
             int flat_index = result.get_node_idx(local_coord);
-            result.nodes[flat_index] = entry.node;
+            result.nodes[flat_index] = node.get();
 
             node_queue.pop();
             continue;
         }
 
-        // ensure all children exist
-        entry.node->init_all_children();
-
-        // add children to the queue
+        // split, add relevant children to the queue
         for (int i = 0; i < 8; ++i) {
             glm::ivec3 offset = {(i >> 0) & 1u, (i >> 1) & 1u, (i >> 2) & 1u};
             glm::vec3 half_size = (entry.bounds.max - entry.bounds.min) * 0.5f;
@@ -606,11 +599,27 @@ auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
                 entry.bounds.min + glm::vec3(offset) * half_size;
             glm::vec3 child_max = child_min + glm::vec3(half_size);
 
-            node_queue.push(
-                NodeQueueEntry{.depth = entry.depth + 1,
-                               .node = entry.node->children[i].get(),
-                               .bounds = {.min = child_min, .max = child_max}});
+            geometry::AABB child_bounds = {.min = child_min, .max = child_max};
+
+            // ignore this child if we don't intersect with the desired area
+            if (!geometry::aabb_aabb_intersect(child_bounds, local_area)) {
+                continue;
+            }
+
+            // otherwise, add child to queue
+            auto &child = node->children[i];
+            if (!child) {
+                child = std::make_unique<OctreeNode>();
+                child->parent = node.get();
+                child->is_leaf = node->is_leaf;
+                child->leaf_data = node->leaf_data;
+                child->children = {};
+            }
+            node_queue.push(NodeQueueEntry{.depth = entry.depth + 1,
+                                           .node = &child,
+                                           .bounds = child_bounds});
         }
+        node->is_leaf = false;
 
         node_queue.pop();
     }
@@ -644,7 +653,7 @@ auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {
         // end recursion if not all children match
         VoxelData &node_data = node->leaf_data;
         for (auto &child : parent->children) {
-            if (!child || child->leaf_data != node_data)
+            if (!child || !child->is_leaf || child->leaf_data != node_data)
                 return node;
         }
 
@@ -659,57 +668,67 @@ auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {
 }
 
 auto Chunk::try_relax_chunk() -> void {
-    // first, DFS through and collect all nodes
-    std::vector<OctreeNode *> all_nodes;
-    std::vector<OctreeNode *> stack;
-    stack.push_back(this->root_node.get());
+    bool any_relaxation = false;
 
-    while (!stack.empty()) {
-        OctreeNode *node = stack.back();
-        stack.pop_back();
+    do {
+        any_relaxation = false;
 
-        all_nodes.push_back(node);
+        // first, DFS through and collect all nodes
+        std::vector<OctreeNode *> all_nodes;
+        std::vector<OctreeNode *> stack;
+        stack.push_back(this->root_node.get());
 
-        // children in reverse order (7 to 0) for correct DFS traversal
-        for (int i = 7; i >= 0; --i) {
-            if (node->children[i]) {
-                stack.push_back(node->children[i].get());
+        while (!stack.empty()) {
+            OctreeNode *node = stack.back();
+            stack.pop_back();
+
+            all_nodes.push_back(node);
+
+            // children in reverse order (7 to 0) for correct DFS traversal
+            for (int i = 7; i >= 0; --i) {
+                if (node->children[i]) {
+                    stack.push_back(node->children[i].get());
+                }
             }
         }
-    }
 
 #ifndef NDEBUG
-    bool relaxed = false;
+        bool relaxed = false;
 #endif
 
-    // then, iterate through all nodes in reverse order and attempt relaxation
-    int i = all_nodes.size() - 1;
-    while (i >= 0) {
-        OctreeNode *node = all_nodes[i];
+        // then, iterate through all nodes in reverse order and attempt
+        // relaxation
+        int i = all_nodes.size() - 1;
+        while (i >= 0) {
+            OctreeNode *node = all_nodes[i];
 
-        OctreeNode *furthest_relaxation = try_relax_up_from_node(node);
-        if (furthest_relaxation != node) {
-            // relaxation occurred, we skip to the furthest relaxed node
-            int original_i = i;
-            while (all_nodes[i] != furthest_relaxation && i > 0)
+            OctreeNode *furthest_relaxation = try_relax_up_from_node(node);
+            if (furthest_relaxation != node) {
+                // relaxation occurred, we skip to the furthest relaxed node
+                any_relaxation = true;
+                int original_i = i;
+                while (all_nodes[i] != furthest_relaxation && i > 0)
+                    --i;
+
+#ifndef NDEBUG
+                std::cout << "  relaxation: killed " << (original_i - i)
+                          << " nodes" << std::endl;
+                relaxed = true;
+#endif
+            } else {
+                // no relaxation occurred, just move on
                 --i;
-
-#ifndef NDEBUG
-            std::cout << "relaxation success! skipped " << (original_i - i)
-                      << " nodes" << std::endl;
-            relaxed = true;
-#endif
-        } else {
-            // no relaxation occurred, just move on
-            --i;
+            }
         }
-    }
 
 #ifndef NDEBUG
-    if (!relaxed) {
-        std::cout << "no relaxation performed." << std::endl;
-    }
+        if (relaxed) {
+            std::cout << "relaxation occurred!" << std::endl;
+        } else {
+            std::cout << "no relaxation performed." << std::endl;
+        }
 #endif
+    } while (any_relaxation);
 }
 
 } // namespace vxng::scene

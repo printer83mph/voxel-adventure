@@ -47,6 +47,11 @@ class Editor {
     auto handle_mouse_down(const SDL_MouseButtonEvent &event) -> void;
     auto handle_mouse_up(const SDL_MouseButtonEvent &event) -> void;
 
+    static const SDL_DialogFileFilter vox_filters[];
+    auto handle_open_vox_file() -> void;
+    static auto open_vox_file(void *user_data, const char *const *file_list,
+                              int filter) -> void;
+
     Cursors cursors;
 
     struct {

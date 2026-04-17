@@ -50,6 +50,8 @@ class Scene {
      */
     auto fill_basic_plane(glm::u8vec4 color) -> void;
 
+    auto load_vox_file(const std::vector<uint8_t> &buffer) -> void;
+
   private:
     float chunk_scale;
     int chunk_resolution;

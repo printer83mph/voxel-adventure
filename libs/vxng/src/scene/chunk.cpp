@@ -148,7 +148,8 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
 }
 
 auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
-                             glm::u8vec4 color) -> void {
+                             glm::u8vec4 color, bool skip_update_buffers)
+    -> void {
     // dig first for the node we want to edit
     OctreeNode *node = dig_into_tree(local_position, depth);
 
@@ -160,7 +161,8 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
     try_relax_up_from_node(node);
 
     // and of course update buffers for rendering
-    update_buffers();
+    if (!skip_update_buffers)
+        update_buffers();
 };
 
 auto Chunk::set_voxel_empty(int depth, glm::vec3 local_position) -> void {
@@ -186,6 +188,41 @@ auto Chunk::reposition(glm::vec3 pos, float scale) -> void {
     this->scale = scale;
 
     update_buffers();
+}
+
+auto Chunk::set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
+                                const std::array<glm::u8vec4, 256> &palette,
+                                glm::ivec3 offset) -> void {
+    // assume indices are:
+    // x + (y * model->size_x) + (z * model->size_x * model->size_y)
+
+    // very jank, we can optimize much better by digging out octree structure in
+    // our region of effect first, and getting a grid-layout vector of
+    // OctreeNode pointers/refs to mutate with our data
+
+    for (int x = 0; x < size.x; ++x) {
+        int filled = 0;
+        for (int y = 0; y < size.y; ++y) {
+            for (int z = 0; z < size.z; ++z) {
+                int voxel_index = x + (y * size.x) + (z * size.x * size.y);
+
+                auto palette_index = data[voxel_index];
+                if (palette_index == 0)
+                    continue;
+
+                glm::u8vec4 color = palette[palette_index];
+
+                glm::vec3 coord = glm::ivec3(x, y, z) + offset;
+                glm::vec3 local_position =
+                    glm::vec3(-0.5) +
+                    glm::vec3(1.0f / (float)this->resolution) * coord;
+
+                this->set_voxel_filled(9, local_position, color, true);
+                filled++;
+            }
+        }
+    }
+    this->update_buffers();
 }
 
 auto Chunk::create_bindgroup_layout(wgpu::Device device) -> void {
@@ -435,6 +472,15 @@ auto Chunk::dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode * {
     }
 
     return node;
+}
+
+auto Chunk::dig_to_depth_everywhere(int depth) -> void {
+    // TODO: implement
+}
+
+auto Chunk::get_grid_pointers(int depth) -> std::vector<OctreeNode *> {
+    // TODO: implement
+    return {};
 }
 
 auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {

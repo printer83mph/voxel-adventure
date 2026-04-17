@@ -24,6 +24,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         dawn::webgpu_dawn
         glm::glm
+        opengametools
 )
 
 target_compile_features(${PROJECT_NAME}

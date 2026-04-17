@@ -2,6 +2,11 @@
 
 namespace vxng::geometry {
 
+auto aabb_aabb_intersect(const AABB &a, const AABB &b) -> bool {
+    return glm::all(glm::lessThanEqual(a.min, b.max)) &&
+           glm::all(glm::greaterThanEqual(a.max, b.min));
+}
+
 // implementation based on libs/vxng/src/wgsl/chunk.wgsl.cpp
 auto ray_aabb_intersect(const Ray &ray, const AABB &aabb)
     -> RayAABBIntersectResult {

@@ -27,6 +27,8 @@ typedef struct RaycastResult {
     glm::vec3 normal;
 } RaycastResult;
 
+auto aabb_aabb_intersect(const AABB &a, const AABB &b) -> bool;
+
 /**
  * Checks if a ray intersects an axis-aligned box (AABB).
  */

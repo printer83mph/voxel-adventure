@@ -623,4 +623,58 @@ auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {
     }
 }
 
+auto Chunk::try_relax_chunk() -> void {
+    // first, DFS through and collect all nodes
+    std::vector<OctreeNode *> all_nodes;
+    std::vector<OctreeNode *> stack;
+    stack.push_back(this->root_node.get());
+
+    while (!stack.empty()) {
+        OctreeNode *node = stack.back();
+        stack.pop_back();
+
+        all_nodes.push_back(node);
+
+        // children in reverse order (7 to 0) for correct DFS traversal
+        for (int i = 7; i >= 0; --i) {
+            if (node->children[i]) {
+                stack.push_back(node->children[i].get());
+            }
+        }
+    }
+
+#ifndef NDEBUG
+    bool relaxed = false;
+#endif
+
+    // then, iterate through all nodes in reverse order and attempt relaxation
+    int i = all_nodes.size() - 1;
+    while (i >= 0) {
+        OctreeNode *node = all_nodes[i];
+
+        OctreeNode *furthest_relaxation = try_relax_up_from_node(node);
+        if (furthest_relaxation != node) {
+            // relaxation occurred, we skip to the furthest relaxed node
+            int original_i = i;
+            while (all_nodes[i] != furthest_relaxation && i > 0)
+                --i;
+
+#ifndef NDEBUG
+            std::cout << "relaxation success! skipped " << (original_i - i)
+                      << " nodes" << std::endl;
+            relaxed = true;
+#endif
+        } else {
+            // no relaxation occurred, just move on
+            --i;
+        }
+    }
+
+#ifndef NDEBUG
+    if (!relaxed) {
+        std::cout << "no relaxation performed." << std::endl;
+    }
+#endif
+}
+
 } // namespace vxng::scene

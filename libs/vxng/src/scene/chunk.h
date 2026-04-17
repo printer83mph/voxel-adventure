@@ -134,6 +134,11 @@ class Chunk {
      */
     auto try_relax_up_from_node(OctreeNode *node) -> OctreeNode *;
 
+    /**
+     * DFS through the whole damn chunk and try to relax everything!!
+     */
+    auto try_relax_chunk() -> void;
+
     glm::vec3 position;
     float scale;
     int resolution;

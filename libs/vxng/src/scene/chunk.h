@@ -112,6 +112,8 @@ class Chunk {
     /**
      * Gets a structured array of pointers to octree nodes at a certain depth.
      * Should be run after `dig_to_depth_everywhere` for grid-based operations.
+     *
+     * TODO: maybe combine dig_to_depth_everywhere into this
      */
     auto get_grid_pointers(int depth) -> std::vector<OctreeNode *>;
 

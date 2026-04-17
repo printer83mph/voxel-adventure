@@ -239,6 +239,11 @@ auto Chunk::set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
             }
         }
     }
+
+    // try to relax the entire chunk!!
+    this->try_relax_chunk();
+
+    // finally update buffers
     this->update_buffers();
 }
 
@@ -491,6 +496,15 @@ auto Chunk::dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode * {
     return node;
 }
 
+auto Chunk::DigAreaResult::get_node_idx(glm::ivec3 coord) const -> int {
+    assert(0 <= coord.x && coord.x <= this->size.x);
+    assert(0 <= coord.y && coord.y <= this->size.y);
+    assert(0 <= coord.z && coord.z <= this->size.z);
+
+    return coord.x + coord.y * this->size.x +
+           coord.z * this->size.x * this->size.y;
+}
+
 auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
                                  glm::ivec3 max_coord) -> Chunk::DigAreaResult {
 
@@ -539,12 +553,7 @@ auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
                 glm::round((entry.bounds.min + 0.5f) * (float)resolution));
             glm::ivec3 local_coord = grid_coord - min_coord;
 
-            assert(local_coord.x >= 0 && local_coord.x < result.size.x);
-            assert(local_coord.y >= 0 && local_coord.y < result.size.y);
-            assert(local_coord.z >= 0 && local_coord.z < result.size.z);
-
-            int flat_index = local_coord.x + local_coord.y * result.size.x +
-                             local_coord.z * result.size.x * result.size.y;
+            int flat_index = result.get_node_idx(local_coord);
             result.nodes[flat_index] = entry.node;
 
             node_queue.pop();

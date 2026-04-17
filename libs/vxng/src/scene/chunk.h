@@ -106,6 +106,8 @@ class Chunk {
     typedef struct DigAreaResult {
         glm::ivec3 size;
         std::vector<OctreeNode *> nodes;
+
+        auto get_node_idx(glm::ivec3 coord) const -> int;
     } DigAreaResult;
 
     /**

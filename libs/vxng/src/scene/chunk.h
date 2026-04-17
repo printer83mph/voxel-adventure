@@ -25,6 +25,7 @@ typedef struct OctreeNode {
     std::array<std::unique_ptr<OctreeNode>, 8> children;
 
     auto has_children() -> bool;
+    auto init_all_children() -> void;
 } OctreeNode;
 
 typedef struct GPUOctreeNode {
@@ -102,20 +103,21 @@ class Chunk {
      */
     auto dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode *;
 
-    /**
-     * Creates octree internal nodes everywhere within this chunk, up to the
-     * given depth. Should generally be followed by `get_grid_pointers` to get
-     * a structured array of pointers to the new octree nodes.
-     */
-    auto dig_to_depth_everywhere(int depth) -> void;
+    typedef struct DigAreaResult {
+        glm::ivec3 size;
+        std::vector<OctreeNode *> nodes;
+    } DigAreaResult;
 
     /**
-     * Gets a structured array of pointers to octree nodes at a certain depth.
-     * Should be run after `dig_to_depth_everywhere` for grid-based operations.
+     * Creates octree internal nodes everywhere within the specified area, up to
+     * the given depth. Spits out a `DigAreaResult` including a flattened 3d
+     * array of resulting pointers
      *
-     * TODO: maybe combine dig_to_depth_everywhere into this
+     * @param min_coord - [0, 2^depth] the inclusive min bound to
+     * @param max_coord - [0, 2^depth] the exclusive max bound to
      */
-    auto get_grid_pointers(int depth) -> std::vector<OctreeNode *>;
+    auto dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
+                              glm::ivec3 max_coord) -> DigAreaResult;
 
     /**
      * Recursively relax this chunk's octree, starting from the given node.

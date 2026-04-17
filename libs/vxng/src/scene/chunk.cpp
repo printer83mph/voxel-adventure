@@ -1,5 +1,6 @@
 #include "chunk.h"
 
+#include <cassert>
 #include <webgpu/webgpu_cpp.h>
 
 #include <cmath>
@@ -23,6 +24,22 @@ auto OctreeNode::has_children() -> bool {
             return true;
     }
     return false;
+}
+
+auto OctreeNode::init_all_children() -> void {
+    // fill children with copies of this node
+    for (int i = 0; i < 8; ++i) {
+        if (this->children[i])
+            continue;
+
+        this->children[i] = std::make_unique<OctreeNode>();
+        auto &child = this->children[i];
+        child->is_leaf = this->is_leaf;
+        child->leaf_data = this->leaf_data;
+        child->children = {};
+    }
+
+    this->is_leaf = false;
 }
 
 // static stuffs
@@ -474,13 +491,87 @@ auto Chunk::dig_into_tree(glm::vec3 local_position, int depth) -> OctreeNode * {
     return node;
 }
 
-auto Chunk::dig_to_depth_everywhere(int depth) -> void {
-    // TODO: implement
-}
+auto Chunk::dig_to_depth_in_area(int depth, glm::ivec3 min_coord,
+                                 glm::ivec3 max_coord) -> Chunk::DigAreaResult {
 
-auto Chunk::get_grid_pointers(int depth) -> std::vector<OctreeNode *> {
-    // TODO: implement
-    return {};
+    // figure out local area of effect
+    int resolution = 1 << depth;
+    float local_step = 1.0f / resolution;
+    geometry::AABB local_area = geometry::AABB{
+        // add/sub epsilon of 0.1f to prevent funny floating point errors when
+        // running intersection checks
+        .min = glm::vec3(-0.5f) + (glm::vec3(min_coord) + 1e-4f) * local_step,
+        .max = glm::vec3(-0.5f) + (glm::vec3(max_coord) - 1e-4f) * local_step,
+    };
+
+    // setup result struct with correct dimensions, reserve space
+    Chunk::DigAreaResult result;
+    result.size = max_coord - min_coord;
+    result.nodes = std::vector<OctreeNode *>(result.size.x * result.size.y *
+                                             result.size.z);
+
+    typedef struct NodeQueueEntry {
+        int depth;
+        OctreeNode *node;
+        geometry::AABB bounds;
+    } NodeQueueEntry;
+
+    // init queue with just root node
+    std::queue<NodeQueueEntry> node_queue = {};
+    node_queue.push(NodeQueueEntry{
+        .depth = 0,
+        .node = this->root_node.get(),
+        .bounds = {.min = glm::vec3(-0.5), .max = glm::vec3(0.5)}});
+
+    // build and traverse queue, digging into intersecting nodes
+    while (!node_queue.empty()) {
+        NodeQueueEntry entry = node_queue.front();
+
+        // ignore this node if we don't intersect with the desired area
+        if (!geometry::aabb_aabb_intersect(entry.bounds, local_area)) {
+            node_queue.pop();
+            continue;
+        }
+
+        // if we've reached max depth, add this node to the output vector
+        if (entry.depth == depth) {
+            glm::ivec3 grid_coord = glm::ivec3(
+                glm::round((entry.bounds.min + 0.5f) * (float)resolution));
+            glm::ivec3 local_coord = grid_coord - min_coord;
+
+            assert(local_coord.x >= 0 && local_coord.x < result.size.x);
+            assert(local_coord.y >= 0 && local_coord.y < result.size.y);
+            assert(local_coord.z >= 0 && local_coord.z < result.size.z);
+
+            int flat_index = local_coord.x + local_coord.y * result.size.x +
+                             local_coord.z * result.size.x * result.size.y;
+            result.nodes[flat_index] = entry.node;
+
+            node_queue.pop();
+            continue;
+        }
+
+        // ensure all children exist
+        entry.node->init_all_children();
+
+        // add children to the queue
+        for (int i = 0; i < 8; ++i) {
+            glm::ivec3 offset = {(i >> 0) & 1u, (i >> 1) & 1u, (i >> 2) & 1u};
+            glm::vec3 half_size = (entry.bounds.max - entry.bounds.min) * 0.5f;
+            glm::vec3 child_min =
+                entry.bounds.min + glm::vec3(offset) * half_size;
+            glm::vec3 child_max = child_min + glm::vec3(half_size);
+
+            node_queue.push(
+                NodeQueueEntry{.depth = entry.depth + 1,
+                               .node = entry.node->children[i].get(),
+                               .bounds = {.min = child_min, .max = child_max}});
+        }
+
+        node_queue.pop();
+    }
+
+    return result;
 }
 
 auto Chunk::try_relax_up_from_node(OctreeNode *node) -> OctreeNode * {

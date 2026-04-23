@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-Palette::Palette() : colors(), current_color_idx(0), picker_color(255) {}
+Palette::Palette() : colors(), current_color_idx(0), picker_color(1.f) {}
 Palette::~Palette() {}
 
 auto Palette::init_default_colors() -> void {

@@ -342,19 +342,21 @@ auto Editor::run_gui() -> void {
         ImGui::Begin("Tools");
 
         // palette
-        ImGui::Text("Palette");
+        ImGui::SeparatorText("Palette");
         palette.run_imgui();
         ImGui::Spacing();
 
+        ImGui::Dummy(ImVec2(0.0f, 16.0f));
+
         // tool selection
+        ImGui::SeparatorText("Tool Selection");
         if (ImGui::RadioButton("Voxel Brush",
                                this->current_tool == &this->tools.voxel_brush))
             this->current_tool = &this->tools.voxel_brush;
 
         ImGui::TextWrapped("More tools on the way!");
 
-        // spacer
-        ImGui::Dummy(ImVec2(0.0f, 24.0f));
+        ImGui::Dummy(ImVec2(0.0f, 8.0f));
 
         // tool options section
         auto tool_name = std::string(this->current_tool->get_tool_name());

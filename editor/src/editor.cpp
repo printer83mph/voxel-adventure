@@ -550,13 +550,12 @@ auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
         // pass off to current tool
         glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
         this->current_tool->handle_keyboard_event(
-            EditorTool::KeyboardEventBundle{
-                .event = &event,
-                .mouse_ndc_coords = mouse_ndc_pos,
-                .scene = this->scene.get(),
-                .camera = &this->viewport_camera,
-                .cursors = &this->cursors,
-            });
+            event, EditorTool::EventBundle{
+                       .mouse_ndc_coords = mouse_ndc_pos,
+                       .scene = this->scene.get(),
+                       .camera = &this->viewport_camera,
+                       .cursors = &this->cursors,
+                   });
     }
     }
 }
@@ -564,13 +563,13 @@ auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
 auto Editor::handle_key_up(const SDL_KeyboardEvent &event) -> void {
     // pass off to current tool
     glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
-    this->current_tool->handle_keyboard_event(EditorTool::KeyboardEventBundle{
-        .event = &event,
-        .mouse_ndc_coords = mouse_ndc_pos,
-        .scene = this->scene.get(),
-        .camera = &this->viewport_camera,
-        .cursors = &this->cursors,
-    });
+    this->current_tool->handle_keyboard_event(
+        event, EditorTool::EventBundle{
+                   .mouse_ndc_coords = mouse_ndc_pos,
+                   .scene = this->scene.get(),
+                   .camera = &this->viewport_camera,
+                   .cursors = &this->cursors,
+               });
 }
 
 auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
@@ -592,38 +591,35 @@ auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
         // no mod held, pass off to current tool
         glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
         this->current_tool->handle_mouse_motion_event(
-            EditorTool::MouseMotionEventBundle{
-                .event = &event,
-                .mouse_ndc_coords = mouse_ndc_pos,
-                .scene = this->scene.get(),
-                .camera = &this->viewport_camera,
-                .cursors = &this->cursors,
-            });
+            event, EditorTool::EventBundle{
+                       .mouse_ndc_coords = mouse_ndc_pos,
+                       .scene = this->scene.get(),
+                       .camera = &this->viewport_camera,
+                       .cursors = &this->cursors,
+                   });
     }
 }
 
 auto Editor::handle_mouse_down(const SDL_MouseButtonEvent &event) -> void {
     glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
     this->current_tool->handle_mouse_button_event(
-        EditorTool::MouseButtonEventBundle{
-            .event = &event,
-            .mouse_ndc_coords = mouse_ndc_pos,
-            .scene = this->scene.get(),
-            .camera = &this->viewport_camera,
-            .cursors = &this->cursors,
-        });
+        event, EditorTool::EventBundle{
+                   .mouse_ndc_coords = mouse_ndc_pos,
+                   .scene = this->scene.get(),
+                   .camera = &this->viewport_camera,
+                   .cursors = &this->cursors,
+               });
 }
 
 auto Editor::handle_mouse_up(const SDL_MouseButtonEvent &event) -> void {
     glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
     this->current_tool->handle_mouse_button_event(
-        EditorTool::MouseButtonEventBundle{
-            .event = &event,
-            .mouse_ndc_coords = mouse_ndc_pos,
-            .scene = this->scene.get(),
-            .camera = &this->viewport_camera,
-            .cursors = &this->cursors,
-        });
+        event, EditorTool::EventBundle{
+                   .mouse_ndc_coords = mouse_ndc_pos,
+                   .scene = this->scene.get(),
+                   .camera = &this->viewport_camera,
+                   .cursors = &this->cursors,
+               });
 }
 
 auto Editor::new_empty_scene() -> void {

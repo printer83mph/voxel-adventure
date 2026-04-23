@@ -548,28 +548,14 @@ auto Editor::handle_key_down(const SDL_KeyboardEvent &event, bool *quit)
 
     default: {
         // pass off to current tool
-        glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
-        this->current_tool->handle_keyboard_event(
-            event, EditorTool::EventBundle{
-                       .mouse_ndc_coords = mouse_ndc_pos,
-                       .scene = this->scene.get(),
-                       .camera = &this->viewport_camera,
-                       .cursors = &this->cursors,
-                   });
+        this->current_tool->handle_keyboard_event(event, make_event_bundle());
     }
     }
 }
 
 auto Editor::handle_key_up(const SDL_KeyboardEvent &event) -> void {
     // pass off to current tool
-    glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
-    this->current_tool->handle_keyboard_event(
-        event, EditorTool::EventBundle{
-                   .mouse_ndc_coords = mouse_ndc_pos,
-                   .scene = this->scene.get(),
-                   .camera = &this->viewport_camera,
-                   .cursors = &this->cursors,
-               });
+    this->current_tool->handle_keyboard_event(event, make_event_bundle());
 }
 
 auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
@@ -589,37 +575,17 @@ auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
         }
     } else {
         // no mod held, pass off to current tool
-        glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
-        this->current_tool->handle_mouse_motion_event(
-            event, EditorTool::EventBundle{
-                       .mouse_ndc_coords = mouse_ndc_pos,
-                       .scene = this->scene.get(),
-                       .camera = &this->viewport_camera,
-                       .cursors = &this->cursors,
-                   });
+        this->current_tool->handle_mouse_motion_event(event,
+                                                      make_event_bundle());
     }
 }
 
 auto Editor::handle_mouse_down(const SDL_MouseButtonEvent &event) -> void {
-    glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
-    this->current_tool->handle_mouse_button_event(
-        event, EditorTool::EventBundle{
-                   .mouse_ndc_coords = mouse_ndc_pos,
-                   .scene = this->scene.get(),
-                   .camera = &this->viewport_camera,
-                   .cursors = &this->cursors,
-               });
+    this->current_tool->handle_mouse_button_event(event, make_event_bundle());
 }
 
 auto Editor::handle_mouse_up(const SDL_MouseButtonEvent &event) -> void {
-    glm::vec2 mouse_ndc_pos = get_mouse_ndc_coords();
-    this->current_tool->handle_mouse_button_event(
-        event, EditorTool::EventBundle{
-                   .mouse_ndc_coords = mouse_ndc_pos,
-                   .scene = this->scene.get(),
-                   .camera = &this->viewport_camera,
-                   .cursors = &this->cursors,
-               });
+    this->current_tool->handle_mouse_button_event(event, make_event_bundle());
 }
 
 auto Editor::new_empty_scene() -> void {
@@ -631,7 +597,7 @@ auto Editor::new_empty_scene() -> void {
     this->renderer.set_scene(this->scene.get());
 }
 
-auto Editor::get_mouse_ndc_coords() const -> glm::vec2 {
+auto Editor::make_event_bundle() -> EditorTool::EventBundle {
     glm::vec2 screen_pos;
     SDL_GetMouseState(&screen_pos.x, &screen_pos.y);
     glm::ivec2 screen_size;
@@ -641,5 +607,12 @@ auto Editor::get_mouse_ndc_coords() const -> glm::vec2 {
     screen_pos /= screen_size;
 
     // flip y and scale both to [-1, 1]
-    return (screen_pos - glm::vec2(0.5)) * glm::vec2(2.f, -2.f);
+    auto mouse_ndc_pos = (screen_pos - glm::vec2(0.5)) * glm::vec2(2.f, -2.f);
+
+    return EditorTool::EventBundle{
+        .mouse_ndc_coords = mouse_ndc_pos,
+        .scene = this->scene.get(),
+        .camera = &this->viewport_camera,
+        .cursors = &this->cursors,
+    };
 }

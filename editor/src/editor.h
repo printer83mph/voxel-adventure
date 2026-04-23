@@ -67,5 +67,5 @@ class Editor {
     // menu options
     auto new_empty_scene() -> void;
 
-    auto get_mouse_ndc_coords() const -> glm::vec2;
+    auto make_event_bundle() -> EditorTool::EventBundle;
 };

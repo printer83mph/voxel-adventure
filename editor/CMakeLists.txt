@@ -7,6 +7,7 @@ target_sources(${PROJECT_NAME}
         src/tools/voxel-brush.cpp
         src/cursors.cpp
         src/editor.cpp
+        src/palette.cpp
         src/main.cpp
         src/tool.cpp
 )

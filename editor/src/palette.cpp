@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-Palette::Palette() : colors(), current_color_idx(0) {}
+Palette::Palette() : colors(), current_color_idx(0), picker_color(255) {}
 Palette::~Palette() {}
 
 auto Palette::init_default_colors() -> void {
@@ -60,8 +60,20 @@ auto Palette::run_imgui() -> void {
                     : default_flags | ImGuiColorEditFlags_NoBorder,
                 ImVec2(16, 16))) {
             set_current_color(i);
+            this->picker_color = glm::vec4(glm::vec3(color) / 255.f, 1.0);
         }
 
         ImGui::PopID();
+    }
+
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Custom Colors")) {
+        ImGui::ColorPicker4("##color_picker", &this->picker_color[0],
+                            ImGuiColorEditFlags_NoAlpha);
+        if (ImGui::Button("+ Add to palette")) {
+            int new_color_idx = add_color(
+                glm::u8vec4(glm::vec3(this->picker_color) * 255.f, 255));
+            this->set_current_color(new_color_idx);
+        }
     }
 }

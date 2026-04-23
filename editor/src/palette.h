@@ -23,4 +23,6 @@ class Palette {
   private:
     std::vector<glm::u8vec4> colors;
     int current_color_idx;
+
+    glm::vec4 picker_color;
 };

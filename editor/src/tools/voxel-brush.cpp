@@ -48,7 +48,7 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
             target_pos + raycast_result.normal * 0.00001f;
 
         bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
-                                       glm::u8vec4(255, 0, 0, 255));
+                                       bundle.current_color);
         break;
     }
     case SDL_BUTTON_RIGHT: {

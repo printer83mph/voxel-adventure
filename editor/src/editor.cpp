@@ -1,7 +1,5 @@
 #include "editor.h"
 
-#include "cursors.h"
-
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -21,7 +19,9 @@ Editor::Editor()
     : renderer(), viewport_camera(),
       scene(std::make_unique<vxng::scene::Scene>(SCENE_RESOLUTION,
                                                  DEFAULT_SCENE_SCALE)),
-      cursors(), tools(), current_tool(&tools.voxel_brush) {};
+      cursors(), tools(), current_tool(&tools.voxel_brush), palette() {
+    palette.init_default_colors();
+};
 
 auto Editor::init() -> int {
 
@@ -341,10 +341,16 @@ auto Editor::run_gui() -> void {
     if (this->panels.show_tools) {
         ImGui::Begin("Tools");
 
-        bool is_voxel_brush_selected =
-            this->current_tool == &this->tools.voxel_brush;
-        if (ImGui::RadioButton("Voxel Brush", is_voxel_brush_selected))
+        // palette
+        ImGui::Text("Palette");
+        palette.run_imgui();
+        ImGui::Spacing();
+
+        // tool selection
+        if (ImGui::RadioButton("Voxel Brush",
+                               this->current_tool == &this->tools.voxel_brush))
             this->current_tool = &this->tools.voxel_brush;
+
         ImGui::TextWrapped("More tools on the way!");
 
         // spacer
@@ -614,5 +620,6 @@ auto Editor::make_event_bundle() -> EditorTool::EventBundle {
         .scene = this->scene.get(),
         .camera = &this->viewport_camera,
         .cursors = &this->cursors,
+        .current_color = this->palette.get_current_color(),
     };
 }

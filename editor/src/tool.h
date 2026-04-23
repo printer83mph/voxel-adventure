@@ -22,6 +22,7 @@ class EditorTool {
         vxng::scene::Scene *scene;
         vxng::camera::Camera *camera;
         Cursors *cursors;
+        glm::u8vec4 current_color;
     } EventBundle;
 
     virtual auto handle_mouse_button_event(const SDL_MouseButtonEvent &event,

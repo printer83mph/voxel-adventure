@@ -18,6 +18,8 @@ class Palette {
     auto set_current_color(int index) -> glm::u8vec4;
     auto remove_color(int index) -> void;
 
+    auto run_imgui() -> void;
+
   private:
     std::vector<glm::u8vec4> colors;
     int current_color_idx;

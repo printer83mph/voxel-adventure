@@ -17,34 +17,20 @@ class EditorTool {
     virtual auto get_tool_name() -> const char * = 0;
     virtual auto render_ui() -> void = 0;
 
-    typedef struct KeyboardEventBundle {
-        const SDL_KeyboardEvent *event;
+    typedef struct EventBundle {
         glm::vec2 mouse_ndc_coords;
         vxng::scene::Scene *scene;
         vxng::camera::Camera *camera;
         Cursors *cursors;
-    } KeyboardEventBundle;
+        glm::u8vec4 current_color;
+    } EventBundle;
 
-    typedef struct MouseButtonEventBundle {
-        const SDL_MouseButtonEvent *event;
-        glm::vec2 mouse_ndc_coords;
-        vxng::scene::Scene *scene;
-        vxng::camera::Camera *camera;
-        Cursors *cursors;
-    } MouseButtonEventBundle;
-
-    typedef struct MouseMotionEventBundle {
-        const SDL_MouseMotionEvent *event;
-        glm::vec2 mouse_ndc_coords;
-        vxng::scene::Scene *scene;
-        vxng::camera::Camera *camera;
-        Cursors *cursors;
-    } MouseMotionEventBundle;
-
-    virtual auto handle_mouse_button_event(const MouseButtonEventBundle &bundle)
+    virtual auto handle_mouse_button_event(const SDL_MouseButtonEvent &event,
+                                           const EventBundle &bundle)
         -> void = 0;
-    virtual auto handle_mouse_motion_event(const MouseMotionEventBundle &bundle)
+    virtual auto handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
+                                           const EventBundle &bundle)
         -> void = 0;
-    virtual auto handle_keyboard_event(const KeyboardEventBundle &bundle)
-        -> void = 0;
+    virtual auto handle_keyboard_event(const SDL_KeyboardEvent &event,
+                                       const EventBundle &bundle) -> void = 0;
 };

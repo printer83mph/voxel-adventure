@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cursors.h"
+#include "palette.h"
 #include "tool.h"
 #include "tools/tools.h"
 
@@ -58,6 +59,7 @@ class Editor {
         VoxelBrush voxel_brush;
     } tools;
     EditorTool *current_tool;
+    Palette palette;
 
     struct {
         bool show_tools = true;
@@ -67,5 +69,5 @@ class Editor {
     // menu options
     auto new_empty_scene() -> void;
 
-    auto get_mouse_ndc_coords() const -> glm::vec2;
+    auto make_event_bundle() -> EditorTool::EventBundle;
 };

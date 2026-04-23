@@ -1,5 +1,6 @@
 #include "voxel-brush.h"
 
+#include "SDL3/SDL_events.h"
 #include "cursors.h"
 
 #include "imgui.h"
@@ -17,10 +18,10 @@ auto VoxelBrush::render_ui() -> void {
     ImGui::SliderInt("Depth", &this->depth, 0, 9);
 }
 
-auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
-    -> void {
+auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
+                                           const EventBundle &bundle) -> void {
     // we don't care about mouse up
-    if (!bundle.event->down)
+    if (!event.down)
         return;
 
     // don't do anything if any mods are held
@@ -40,14 +41,14 @@ auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
         mouse_ray.origin + raycast_result.t * mouse_ray.direction;
 
     // set voxel filled!
-    switch (bundle.event->button) {
+    switch (event.button) {
     case SDL_BUTTON_LEFT: {
         // go outside of voxel boundary
         glm::vec3 exterior_target_pos =
             target_pos + raycast_result.normal * 0.00001f;
 
         bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
-                                       glm::u8vec4(255, 0, 0, 255));
+                                       bundle.current_color);
         break;
     }
     case SDL_BUTTON_RIGHT: {
@@ -60,8 +61,8 @@ auto VoxelBrush::handle_mouse_button_event(const MouseButtonEventBundle &bundle)
     }
 }
 
-auto VoxelBrush::handle_mouse_motion_event(const MouseMotionEventBundle &bundle)
-    -> void {
+auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
+                                           const EventBundle &bundle) -> void {
     auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
     auto raycast_result = bundle.scene->raycast(mouse_ray);
 
@@ -73,5 +74,5 @@ auto VoxelBrush::handle_mouse_motion_event(const MouseMotionEventBundle &bundle)
     }
 }
 
-auto VoxelBrush::handle_keyboard_event(const KeyboardEventBundle &bundle)
-    -> void {}
+auto VoxelBrush::handle_keyboard_event(const SDL_KeyboardEvent &event,
+                                       const EventBundle &bundle) -> void {}

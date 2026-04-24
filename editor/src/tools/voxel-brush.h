@@ -1,11 +1,10 @@
 #pragma once
 
 #include "tool.h"
+#include "tools/shared/brush-kernel.h"
 
 #include <vxng/geometry.h>
 #include <vxng/scene.h>
-
-#include <unordered_map>
 
 class VoxelBrush : public EditorTool {
   public:
@@ -37,13 +36,8 @@ class VoxelBrush : public EditorTool {
     vxng::geometry::Ray plane_normal;
     glm::vec2 last_mouse_ndc_coords;
 
-    // for brush sizing
-    std::unordered_map<glm::uvec3, bool> abs_brush_kernel;
-
-    auto compute_brush_kernel() -> void;
-
+    BrushKernel brush_kernel;
     typedef enum StampMode { PLACE, DELETE } StampMode;
-
     auto stamp_brush(StampMode mode, glm::vec3 position,
                      const EventBundle &bundle,
                      bool skip_update_buffers = false) -> void;

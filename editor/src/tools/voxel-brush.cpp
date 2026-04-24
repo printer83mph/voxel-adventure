@@ -5,7 +5,7 @@
 
 VoxelBrush::VoxelBrush()
     : current_mode(Mode::AXIS_ALIGNED), size(1), depth(9), flow_density(5.f),
-      plane_normal(), last_mouse_ndc_coords(), abs_brush_kernel() {}
+      plane_normal(), last_mouse_ndc_coords(), brush_kernel(size) {}
 
 VoxelBrush::~VoxelBrush() {}
 
@@ -21,7 +21,7 @@ auto VoxelBrush::render_ui() -> void {
         this->current_mode = Mode::CAMERA_PLANE;
 
     if (ImGui::SliderInt("Size", &this->size, 1, 5))
-        compute_brush_kernel();
+        this->brush_kernel.set_size(this->size);
 
     ImGui::SliderInt("Depth", &this->depth, 0, 9);
     ImGui::SliderFloat("Flow Density", &this->flow_density, 0.f, 20.f);
@@ -124,10 +124,12 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
                     glm::vec3 intersection =
                         mouse_ray.origin + t * mouse_ray.direction;
 
-                    bool placing = event.state & SDL_BUTTON_LEFT;
+                    StampMode stamp_mode = (event.state & SDL_BUTTON_LEFT)
+                                               ? StampMode::PLACE
+                                               : StampMode::DELETE;
                     // add/remove voxels
-                    stamp_brush(placing ? StampMode::PLACE : StampMode::DELETE,
-                                intersection, bundle, skip_update_buffers);
+                    stamp_brush(stamp_mode, intersection, bundle,
+                                skip_update_buffers);
                 }
             }
         }
@@ -139,57 +141,20 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
 auto VoxelBrush::handle_keyboard_event(const SDL_KeyboardEvent &event,
                                        const EventBundle &bundle) -> void {}
 
-auto VoxelBrush::compute_brush_kernel() -> void {
-    this->abs_brush_kernel.clear();
-
-    for (int x = 0; x < this->size; ++x) {
-        for (int y = 0; y < this->size; ++y) {
-            for (int z = 0; z < this->size; ++z) {
-                float magnitude = glm::sqrt(x * x + y * y + z * z);
-                this->abs_brush_kernel[glm::uvec3(x, y, z)] =
-                    magnitude < (this->size - 0.5f);
-            }
-        }
-    }
-}
-
 auto VoxelBrush::stamp_brush(StampMode mode, glm::vec3 position,
                              const EventBundle &bundle,
                              bool skip_update_buffers) -> void {
     float voxel_size =
         bundle.scene->get_chunk_scale() / (float)(1u << this->depth);
 
-    for (int x = 0; x < this->size; ++x) {
-        for (int y = 0; y < this->size; ++y) {
-            for (int z = 0; z < this->size; ++z) {
-                auto kernel_result =
-                    this->abs_brush_kernel.find(glm::uvec3(x, y, z));
-
-                // skip if not found, or if marked as
-                if (kernel_result == this->abs_brush_kernel.end())
-                    continue;
-                if (!kernel_result->second)
-                    continue;
-
-                for (int i = 0; i < 8; ++i) {
-                    glm::vec3 signs = glm::vec3(1u & (i >> 0u), 1u & (i >> 1u),
-                                                1u & (i >> 2u)) *
-                                          2.f -
-                                      1.f;
-
-                    if (mode == StampMode::PLACE) {
-                        bundle.scene->set_voxel_filled(
-                            this->depth,
-                            position + glm::vec3(x, y, z) * signs * voxel_size,
-                            bundle.current_color, true);
-                    } else {
-                        bundle.scene->set_voxel_empty(
-                            this->depth,
-                            position + glm::vec3(x, y, z) * signs * voxel_size,
-                            true);
-                    }
-                }
-            }
+    for (auto &ioffset : this->brush_kernel.get_kernel()) {
+        if (mode == StampMode::PLACE) {
+            bundle.scene->set_voxel_filled(
+                this->depth, position + glm::vec3(ioffset) * voxel_size,
+                bundle.current_color, true);
+        } else {
+            bundle.scene->set_voxel_empty(
+                this->depth, position + glm::vec3(ioffset) * voxel_size, true);
         }
     }
 

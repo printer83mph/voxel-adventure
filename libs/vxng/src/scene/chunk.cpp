@@ -183,7 +183,8 @@ auto Chunk::set_voxel_empty(int depth, glm::vec3 local_position,
     try_relax_up_from_node(node);
 
     // and of course update buffers for rendering
-    update_buffers();
+    if (!skip_update_buffers)
+        update_buffers();
 }
 
 auto Chunk::reposition(glm::vec3 pos, float scale) -> void {

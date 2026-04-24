@@ -36,9 +36,13 @@ cmake .. -G "Ninja Multi-Config" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 Then, to build the editor app:
 
 ```sh
-cmake --build . --target voxel-editor --config "Release" -j 8 # builds to ./Release/voxel-editor
+# builds to ./Release/voxel-editor
+cmake --build . --target voxel-editor --config "Release" -j 8
+
 # or for a debug build:
-cmake --build . --target voxel-editor --config "Debug" -j 8 # builds to ./Debug/voxel-editor
+
+# builds to ./Debug/voxel-editor
+cmake --build . --target voxel-editor --config "Debug" -j 8
 ```
 
 ## Development

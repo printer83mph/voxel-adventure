@@ -61,7 +61,8 @@ class Chunk {
     auto set_voxel_filled(int depth, glm::vec3 local_position,
                           glm::u8vec4 color, bool skip_update_buffers = false)
         -> void;
-    auto set_voxel_empty(int depth, glm::vec3 local_position) -> void;
+    auto set_voxel_empty(int depth, glm::vec3 local_position,
+                         bool skip_update_buffers = false) -> void;
     auto set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
                              const std::array<glm::u8vec4, 256> &palette,
                              glm::ivec3 offset) -> void;

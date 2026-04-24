@@ -192,6 +192,12 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> TraversalResult {
     var closestColor: vec4<f32> = SKY_COLOR;
     var closestNormal: vec3<f32> = vec3<f32>(0.0);
 
+    // Compute traversal order based on ray direction
+    // We want to visit octants from front to back!
+    let xStart = select(1u, 0u, ray.direction.x > 0.0);
+    let yStart = select(1u, 0u, ray.direction.y > 0.0);
+    let zStart = select(1u, 0u, ray.direction.z > 0.0);
+
     // DFS traversal
     while (stackPtr >= 0) {
         let depth = stackPtr;
@@ -217,7 +223,13 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> TraversalResult {
 
         // internal node: find next child octant to visit
         var pushed = false;
-        for (var o = stack[depth].nextOctant; o < 8u; o += 1u) {
+        for (var i = stack[depth].nextOctant; i < 8u; i += 1u) {
+            // Map iteration index to octant in front-to-back order
+            var o = xStart | (yStart << 1u) | (zStart << 2u);
+            if ((i & 1u) != 0u) { o ^= 1u; }
+            if ((i & 2u) != 0u) { o ^= 2u; }
+            if ((i & 4u) != 0u) { o ^= 4u; }
+
             if ((node.childMask & (1u << o)) == 0u) {
                 continue;
             }
@@ -232,7 +244,7 @@ fn traverseOctree(ray: Ray, rootAABB: AABB) -> TraversalResult {
             }
 
             // record where parent should resume when we come back
-            stack[depth].nextOctant = o + 1u;
+            stack[depth].nextOctant = i + 1u;
 
             // compute child's index in the contiguous array:
             // firstChildIdx + number of set bits below bit o

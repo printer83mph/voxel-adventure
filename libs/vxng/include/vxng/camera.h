@@ -21,10 +21,12 @@ class Camera {
 
     /** Creates world-space ray based on an NDC screen position */
     auto screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray;
+    auto get_forward() const -> glm::vec3;
 
     /** Updates the aspect ratio (width / height) for screen-to-ray conversion
      */
     auto set_aspect_ratio(float aspect_ratio) -> void;
+    auto get_aspect_ratio() const -> float;
 
   protected:
     Camera(glm::vec3 position, glm::mat3 rotation, float fovy_rad);

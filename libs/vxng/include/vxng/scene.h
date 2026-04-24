@@ -27,8 +27,8 @@ class Scene {
 
     auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
 
-    auto set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color)
-        -> void;
+    auto set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color,
+                          bool skip_update_buffers = false) -> void;
     auto set_voxel_empty(int depth, glm::vec3 position) -> void;
 
     // --------- Utility ---------

@@ -118,6 +118,7 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
         } else {
             // Internal node - push children onto stack in reverse order (for
             // DFS) We want to visit them in order 0-7, so push in reverse 7-0
+            bool ray_origin_inside = aabb.contains(ray.origin);
             for (int i = 7; i >= 0; --i) {
                 if (node->children[i]) {
                     // Compute child AABB
@@ -136,7 +137,8 @@ auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
                     // Check if ray could hit this child AABB before closest hit
                     auto child_result =
                         geometry::ray_aabb_intersect(ray, child_aabb);
-                    if (child_result.hit && child_result.t < closest_t) {
+                    if (child_result.hit &&
+                        (ray_origin_inside || child_result.t < closest_t)) {
                         stack.push_back({node->children[i].get(), child_aabb});
                     }
                 }

@@ -12,6 +12,8 @@ typedef struct Ray {
 typedef struct AABB {
     glm::vec3 min;
     glm::vec3 max;
+
+    auto contains(glm::vec3 point) const -> bool;
 } AABB;
 
 typedef struct RayAABBIntersectResult {

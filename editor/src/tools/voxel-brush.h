@@ -2,6 +2,8 @@
 
 #include "tool.h"
 
+#include <vxng/geometry.h>
+
 class VoxelBrush : public EditorTool {
   public:
     VoxelBrush();
@@ -17,6 +19,17 @@ class VoxelBrush : public EditorTool {
     auto handle_keyboard_event(const SDL_KeyboardEvent &event,
                                const EventBundle &bundle) -> void override;
 
+    typedef enum Mode {
+        AXIS_ALIGNED,
+        CAMERA_PLANE,
+    } Mode;
+
   private:
+    Mode current_mode;
     int depth;
+    float flow_density;
+
+    // for tracking drags
+    vxng::geometry::Ray plane_normal;
+    glm::vec2 last_mouse_ndc_coords;
 };

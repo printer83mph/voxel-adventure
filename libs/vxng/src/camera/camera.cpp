@@ -75,8 +75,12 @@ auto Camera::screen_to_ray(glm::vec2 screen_pos) const -> geometry::Ray {
     return ray;
 }
 
+auto Camera::get_forward() const -> glm::vec3 { return -this->rotation[2]; }
+
 auto Camera::set_aspect_ratio(float aspect_ratio) -> void {
     this->aspect_ratio = aspect_ratio;
 }
+
+auto Camera::get_aspect_ratio() const -> float { return this->aspect_ratio; }
 
 } // namespace vxng::camera

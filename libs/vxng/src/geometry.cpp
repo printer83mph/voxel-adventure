@@ -48,23 +48,28 @@ auto ray_aabb_intersect(const Ray &ray, const AABB &aabb)
 
 auto compute_aabb_normal(const AABB &aabb, glm::vec3 intersection)
     -> glm::vec3 {
-    const float epsilon = 0.0001f;
+    float dx_min = std::abs(intersection.x - aabb.min.x);
+    float dx_max = std::abs(intersection.x - aabb.max.x);
+    float dy_min = std::abs(intersection.y - aabb.min.y);
+    float dy_max = std::abs(intersection.y - aabb.max.y);
+    float dz_min = std::abs(intersection.z - aabb.min.z);
+    float dz_max = std::abs(intersection.z - aabb.max.z);
 
-    if (std::abs(intersection.x - aabb.min.x) < epsilon) {
+    float min_dist = std::min({dx_min, dx_max, dy_min, dy_max, dz_min, dz_max});
+
+    if (min_dist == dx_min)
         return glm::vec3(-1.0f, 0.0f, 0.0f);
-    } else if (std::abs(intersection.x - aabb.max.x) < epsilon) {
+    if (min_dist == dx_max)
         return glm::vec3(1.0f, 0.0f, 0.0f);
-    } else if (std::abs(intersection.y - aabb.min.y) < epsilon) {
+    if (min_dist == dy_min)
         return glm::vec3(0.0f, -1.0f, 0.0f);
-    } else if (std::abs(intersection.y - aabb.max.y) < epsilon) {
+    if (min_dist == dy_max)
         return glm::vec3(0.0f, 1.0f, 0.0f);
-    } else if (std::abs(intersection.z - aabb.min.z) < epsilon) {
+    if (min_dist == dz_min)
         return glm::vec3(0.0f, 0.0f, -1.0f);
-    } else if (std::abs(intersection.z - aabb.max.z) < epsilon) {
+    if (min_dist == dz_max)
         return glm::vec3(0.0f, 0.0f, 1.0f);
-    }
 
-    // evil fallback just in case, shouldn't happen
     return glm::vec3(0.0f, 0.0f, 0.0f);
 }
 

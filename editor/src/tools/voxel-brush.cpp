@@ -1,6 +1,5 @@
 #include "voxel-brush.h"
 
-#include <SDL3/SDL_events.h>
 #include <imgui.h>
 #include <vxng/geometry.h>
 
@@ -59,6 +58,10 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
         glm::vec3 interior_target_pos =
             target_pos - raycast_result.normal * 0.00001f;
         bundle.scene->set_voxel_empty(this->depth, interior_target_pos);
+        this->plane_normal = vxng::geometry::Ray{
+            .origin = target_pos,
+            .direction = raycast_result.normal,
+        };
         break;
     }
     }
@@ -76,7 +79,8 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
         bundle.cursors->set_cursor(Cursors::Variant::DEFAULT);
     }
 
-    if (event.state & SDL_BUTTON_LEFT) {
+    // do dragging logic
+    if (event.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK)) {
         auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
 
         // project mouse ray onto plane defined by plane_normal
@@ -90,10 +94,19 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
                 // place voxel if hit
                 glm::vec3 intersection =
                     mouse_ray.origin + t * mouse_ray.direction;
-                glm::vec3 exterior_target_pos =
-                    intersection + this->plane_normal.direction * 0.00001f;
-                bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
-                                               bundle.current_color);
+                if (event.state & SDL_BUTTON_LEFT) {
+                    // add voxels
+                    glm::vec3 exterior_target_pos =
+                        intersection + this->plane_normal.direction * 0.00001f;
+                    bundle.scene->set_voxel_filled(
+                        this->depth, exterior_target_pos, bundle.current_color);
+                } else {
+                    // remove voxels
+                    glm::vec3 interior_target_pos =
+                        intersection - this->plane_normal.direction * 0.00001f;
+                    bundle.scene->set_voxel_empty(this->depth,
+                                                  interior_target_pos);
+                }
             }
         }
     }

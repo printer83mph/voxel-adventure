@@ -1,6 +1,6 @@
-# Voxel Engine and Editor
+# Voxel Adventure
 
-Project name WIP
+`vxng`: a sparse voxel octree engine, with a voxel editor demo app
 
 ## Development
 
@@ -19,7 +19,7 @@ The vscode/zed integrations assume you are using the Ninja Multi-Config generato
 
 ### Using devcontainers (Linux)
 
-Make sure to add docker to the x11 ACL.
+Make sure to add Docker to the x11 ACL.
 
 ```sh
 xhost +local:docker

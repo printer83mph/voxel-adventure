@@ -3,6 +3,7 @@
 #include "tool.h"
 
 #include <vxng/geometry.h>
+#include <vxng/scene.h>
 
 #include <unordered_map>
 
@@ -37,6 +38,13 @@ class VoxelBrush : public EditorTool {
     glm::vec2 last_mouse_ndc_coords;
 
     // for brush sizing
-    auto compute_brush_kernel() -> void;
     std::unordered_map<glm::uvec3, bool> abs_brush_kernel;
+
+    auto compute_brush_kernel() -> void;
+
+    typedef enum StampMode { PLACE, DELETE } StampMode;
+
+    auto stamp_brush(StampMode mode, glm::vec3 position,
+                     const EventBundle &bundle,
+                     bool skip_update_buffers = false) -> void;
 };

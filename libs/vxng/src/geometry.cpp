@@ -2,6 +2,12 @@
 
 namespace vxng::geometry {
 
+auto AABB::contains(glm::vec3 point) const -> bool {
+    return point.x >= this->min.x && point.x <= this->max.x &&
+           point.y >= this->min.y && point.y <= this->max.y &&
+           point.z >= this->min.z && point.z <= this->max.z;
+}
+
 // implementation based on libs/vxng/src/wgsl/chunk.wgsl.cpp
 auto ray_aabb_intersect(const Ray &ray, const AABB &aabb)
     -> RayAABBIntersectResult {

@@ -356,9 +356,10 @@ auto Editor::run_gui() -> void {
 
         ImGui::TextWrapped("More tools on the way!");
 
-        ImGui::Dummy(ImVec2(0.0f, 8.0f));
+        ImGui::Dummy(ImVec2(0.0f, 16.0f));
 
         // tool options section
+        ImGui::SeparatorText("Tool Options");
         auto tool_name = std::string(this->current_tool->get_tool_name());
         if (ImGui::CollapsingHeader((tool_name + "###ToolMenu").c_str(),
                                     ImGuiTreeNodeFlags_DefaultOpen)) {

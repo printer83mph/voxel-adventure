@@ -9,9 +9,7 @@ VoxelBrush::VoxelBrush()
 
 VoxelBrush::~VoxelBrush() {}
 
-auto VoxelBrush::get_tool_name() -> const char * {
-    return "Simple Voxel Brush";
-}
+auto VoxelBrush::get_tool_name() -> const char * { return "Voxel Brush"; }
 
 // no ui for this yet
 auto VoxelBrush::render_ui() -> void {

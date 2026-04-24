@@ -4,6 +4,8 @@
 
 #include <vxng/geometry.h>
 
+#include <unordered_map>
+
 class VoxelBrush : public EditorTool {
   public:
     VoxelBrush();
@@ -26,10 +28,15 @@ class VoxelBrush : public EditorTool {
 
   private:
     Mode current_mode;
+    int size;
     int depth;
     float flow_density;
 
     // for tracking drags
     vxng::geometry::Ray plane_normal;
     glm::vec2 last_mouse_ndc_coords;
+
+    // for brush sizing
+    auto compute_brush_kernel() -> void;
+    std::unordered_map<glm::uvec3, bool> abs_brush_kernel;
 };

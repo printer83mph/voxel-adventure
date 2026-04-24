@@ -4,8 +4,8 @@
 #include <vxng/geometry.h>
 
 VoxelBrush::VoxelBrush()
-    : current_mode(Mode::AXIS_ALIGNED), depth(9), flow_density(5.f),
-      plane_normal(), last_mouse_ndc_coords() {}
+    : current_mode(Mode::AXIS_ALIGNED), size(1), depth(9), flow_density(5.f),
+      plane_normal(), last_mouse_ndc_coords(), abs_brush_kernel() {}
 
 VoxelBrush::~VoxelBrush() {}
 
@@ -19,6 +19,9 @@ auto VoxelBrush::render_ui() -> void {
     if (ImGui::RadioButton("Camera plane",
                            this->current_mode == Mode::CAMERA_PLANE))
         this->current_mode = Mode::CAMERA_PLANE;
+
+    if (ImGui::SliderInt("Size", &this->size, 1, 5))
+        compute_brush_kernel();
 
     ImGui::SliderInt("Depth", &this->depth, 0, 9);
     ImGui::SliderFloat("Flow Density", &this->flow_density, 0.f, 20.f);
@@ -140,3 +143,17 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
 
 auto VoxelBrush::handle_keyboard_event(const SDL_KeyboardEvent &event,
                                        const EventBundle &bundle) -> void {}
+
+auto VoxelBrush::compute_brush_kernel() -> void {
+    this->abs_brush_kernel.clear();
+
+    for (int x = 0; x < this->size; ++x) {
+        for (int y = 0; y < this->size; ++y) {
+            for (int z = 0; z < this->size; ++z) {
+                float magnitude = glm::sqrt(x * x + y * y + z * z);
+                this->abs_brush_kernel[glm::uvec3(x, y, z)] =
+                    magnitude < this->size - 0.000001f;
+            }
+        }
+    }
+}

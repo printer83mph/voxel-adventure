@@ -3,6 +3,9 @@
 #include "tool.h"
 
 #include <vxng/geometry.h>
+#include <vxng/scene.h>
+
+#include <unordered_map>
 
 class VoxelBrush : public EditorTool {
   public:
@@ -26,10 +29,22 @@ class VoxelBrush : public EditorTool {
 
   private:
     Mode current_mode;
+    int size;
     int depth;
     float flow_density;
 
     // for tracking drags
     vxng::geometry::Ray plane_normal;
     glm::vec2 last_mouse_ndc_coords;
+
+    // for brush sizing
+    std::unordered_map<glm::uvec3, bool> abs_brush_kernel;
+
+    auto compute_brush_kernel() -> void;
+
+    typedef enum StampMode { PLACE, DELETE } StampMode;
+
+    auto stamp_brush(StampMode mode, glm::vec3 position,
+                     const EventBundle &bundle,
+                     bool skip_update_buffers = false) -> void;
 };

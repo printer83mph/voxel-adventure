@@ -167,7 +167,8 @@ auto Chunk::set_voxel_filled(int depth, glm::vec3 local_position,
         update_buffers();
 };
 
-auto Chunk::set_voxel_empty(int depth, glm::vec3 local_position) -> void {
+auto Chunk::set_voxel_empty(int depth, glm::vec3 local_position,
+                            bool skip_update_buffers) -> void {
     // dig first for the node we want to edit
     OctreeNode *node = dig_into_tree(local_position, depth);
 

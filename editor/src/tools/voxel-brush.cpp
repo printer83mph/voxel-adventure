@@ -4,14 +4,12 @@
 #include <vxng/geometry.h>
 
 VoxelBrush::VoxelBrush()
-    : current_mode(Mode::AXIS_ALIGNED), depth(9), flow_density(5.f),
-      plane_normal(), last_mouse_ndc_coords() {}
+    : current_mode(Mode::AXIS_ALIGNED), size(1), depth(9), flow_density(5.f),
+      plane_normal(), last_mouse_ndc_coords(), abs_brush_kernel() {}
 
 VoxelBrush::~VoxelBrush() {}
 
-auto VoxelBrush::get_tool_name() -> const char * {
-    return "Simple Voxel Brush";
-}
+auto VoxelBrush::get_tool_name() -> const char * { return "Voxel Brush"; }
 
 // no ui for this yet
 auto VoxelBrush::render_ui() -> void {
@@ -21,6 +19,9 @@ auto VoxelBrush::render_ui() -> void {
     if (ImGui::RadioButton("Camera plane",
                            this->current_mode == Mode::CAMERA_PLANE))
         this->current_mode = Mode::CAMERA_PLANE;
+
+    if (ImGui::SliderInt("Size", &this->size, 1, 5))
+        compute_brush_kernel();
 
     ImGui::SliderInt("Depth", &this->depth, 0, 9);
     ImGui::SliderFloat("Flow Density", &this->flow_density, 0.f, 20.f);
@@ -58,8 +59,7 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
         glm::vec3 exterior_target_pos =
             target_pos + raycast_result.normal * 0.00001f;
 
-        bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
-                                       bundle.current_color);
+        stamp_brush(StampMode::PLACE, exterior_target_pos, bundle);
         this->plane_normal = vxng::geometry::Ray{
             .origin = exterior_target_pos,
             .direction = plane_normal,
@@ -70,7 +70,8 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
         // go inside voxel boundary
         glm::vec3 interior_target_pos =
             target_pos - raycast_result.normal * 0.00001f;
-        bundle.scene->set_voxel_empty(this->depth, interior_target_pos);
+
+        stamp_brush(StampMode::DELETE, interior_target_pos, bundle);
         this->plane_normal = vxng::geometry::Ray{
             .origin = interior_target_pos,
             .direction = plane_normal,
@@ -103,10 +104,10 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
             glm::ceil(mouse_move_distance * this->flow_density);
 
         for (int step = 1; step <= flow_step_count; ++step) {
+            bool skip_update_buffers = step < flow_step_count;
             glm::vec2 lerped_mouse_ndc_coords =
                 glm::mix(this->last_mouse_ndc_coords, bundle.mouse_ndc_coords,
                          (float)step / (float)flow_step_count);
-            bool skip_update_buffers = step < flow_step_count;
 
             auto mouse_ray =
                 bundle.camera->screen_to_ray(lerped_mouse_ndc_coords);
@@ -122,16 +123,11 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
                     // place voxel if hit
                     glm::vec3 intersection =
                         mouse_ray.origin + t * mouse_ray.direction;
-                    if (event.state & SDL_BUTTON_LEFT) {
-                        // add voxels
-                        bundle.scene->set_voxel_filled(
-                            this->depth, intersection, bundle.current_color,
-                            skip_update_buffers);
-                    } else {
-                        // remove voxels
-                        bundle.scene->set_voxel_empty(this->depth,
-                                                      intersection);
-                    }
+
+                    bool placing = event.state & SDL_BUTTON_LEFT;
+                    // add/remove voxels
+                    stamp_brush(placing ? StampMode::PLACE : StampMode::DELETE,
+                                intersection, bundle, skip_update_buffers);
                 }
             }
         }
@@ -142,3 +138,67 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
 
 auto VoxelBrush::handle_keyboard_event(const SDL_KeyboardEvent &event,
                                        const EventBundle &bundle) -> void {}
+
+auto VoxelBrush::compute_brush_kernel() -> void {
+    this->abs_brush_kernel.clear();
+
+    for (int x = 0; x < this->size; ++x) {
+        for (int y = 0; y < this->size; ++y) {
+            for (int z = 0; z < this->size; ++z) {
+                float magnitude = glm::sqrt(x * x + y * y + z * z);
+                this->abs_brush_kernel[glm::uvec3(x, y, z)] =
+                    magnitude < (this->size - 0.5f);
+            }
+        }
+    }
+}
+
+auto VoxelBrush::stamp_brush(StampMode mode, glm::vec3 position,
+                             const EventBundle &bundle,
+                             bool skip_update_buffers) -> void {
+    float voxel_size =
+        bundle.scene->get_chunk_scale() / (float)(1u << this->depth);
+
+    for (int x = 0; x < this->size; ++x) {
+        for (int y = 0; y < this->size; ++y) {
+            for (int z = 0; z < this->size; ++z) {
+                auto kernel_result =
+                    this->abs_brush_kernel.find(glm::uvec3(x, y, z));
+
+                // skip if not found, or if marked as
+                if (kernel_result == this->abs_brush_kernel.end())
+                    continue;
+                if (!kernel_result->second)
+                    continue;
+
+                for (int i = 0; i < 8; ++i) {
+                    glm::vec3 signs = glm::vec3(1u & (i >> 0u), 1u & (i >> 1u),
+                                                1u & (i >> 2u)) *
+                                          2.f -
+                                      1.f;
+
+                    if (mode == StampMode::PLACE) {
+                        bundle.scene->set_voxel_filled(
+                            this->depth,
+                            position + glm::vec3(x, y, z) * signs * voxel_size,
+                            bundle.current_color, true);
+                    } else {
+                        bundle.scene->set_voxel_empty(
+                            this->depth,
+                            position + glm::vec3(x, y, z) * signs * voxel_size,
+                            true);
+                    }
+                }
+            }
+        }
+    }
+
+    // set base node
+    if (mode == StampMode::PLACE) {
+        bundle.scene->set_voxel_filled(
+            this->depth, position, bundle.current_color, skip_update_buffers);
+    } else {
+        bundle.scene->set_voxel_empty(this->depth, position,
+                                      skip_update_buffers);
+    }
+}

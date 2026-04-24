@@ -131,11 +131,13 @@ auto Scene::set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color,
                                    color, skip_update_buffers);
 }
 
-auto Scene::set_voxel_empty(int depth, glm::vec3 position) -> void {
+auto Scene::set_voxel_empty(int depth, glm::vec3 position,
+                            bool skip_update_buffers) -> void {
     auto chunked_location = get_chunked_location_info(position);
     Chunk *target_chunk = touch_chunk(chunked_location.chunk_coord);
 
-    target_chunk->set_voxel_empty(depth, chunked_location.local_position);
+    target_chunk->set_voxel_empty(depth, chunked_location.local_position,
+                                  skip_update_buffers);
 }
 
 auto Scene::get_chunk_scale() const -> float { return this->chunk_scale; }

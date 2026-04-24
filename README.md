@@ -22,6 +22,8 @@ First, initialize submodules (not recursive):
 git submodule update --init
 ```
 
+_Note: The reason we don't recursively init submodules is that Dawn includes a bunch of libraries as submodules that might not need to be downloaded, depending on your setup. The next step will have Dawn automatically download its required dependencies._
+
 We use Ninja multi-config with clangd. To configure CMake, run:
 
 ```sh

@@ -2,6 +2,8 @@
 
 #include "tool.h"
 
+#include <vxng/geometry.h>
+
 class VoxelBrush : public EditorTool {
   public:
     VoxelBrush();
@@ -19,4 +21,7 @@ class VoxelBrush : public EditorTool {
 
   private:
     int depth;
+
+    // for tracking drags
+    vxng::geometry::Ray plane_normal;
 };

@@ -1,11 +1,10 @@
 #include "voxel-brush.h"
 
-#include "SDL3/SDL_events.h"
-#include "cursors.h"
+#include <SDL3/SDL_events.h>
+#include <imgui.h>
+#include <vxng/geometry.h>
 
-#include "imgui.h"
-
-VoxelBrush::VoxelBrush() : depth(9) {}
+VoxelBrush::VoxelBrush() : depth(9), plane_normal() {}
 
 VoxelBrush::~VoxelBrush() {}
 
@@ -49,6 +48,10 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
 
         bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
                                        bundle.current_color);
+        this->plane_normal = vxng::geometry::Ray{
+            .origin = exterior_target_pos,
+            .direction = raycast_result.normal,
+        };
         break;
     }
     case SDL_BUTTON_RIGHT: {
@@ -71,6 +74,28 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
         bundle.cursors->set_cursor(Cursors::Variant::POINTER);
     } else {
         bundle.cursors->set_cursor(Cursors::Variant::DEFAULT);
+    }
+
+    if (event.state & SDL_BUTTON_LEFT) {
+        auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
+
+        // project mouse ray onto plane defined by plane_normal
+        float denom =
+            glm::dot(this->plane_normal.direction, mouse_ray.direction);
+        if (std::abs(denom) > 1e-6f) {
+            float t = glm::dot(this->plane_normal.origin - mouse_ray.origin,
+                               this->plane_normal.direction) /
+                      denom;
+            if (t >= 0.0f) {
+                // place voxel if hit
+                glm::vec3 intersection =
+                    mouse_ray.origin + t * mouse_ray.direction;
+                glm::vec3 exterior_target_pos =
+                    intersection + this->plane_normal.direction * 0.00001f;
+                bundle.scene->set_voxel_filled(this->depth, exterior_target_pos,
+                                               bundle.current_color);
+            }
+        }
     }
 }
 

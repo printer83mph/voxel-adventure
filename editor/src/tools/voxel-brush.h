@@ -21,6 +21,9 @@ class VoxelBrush : public EditorTool {
     auto handle_keyboard_event(const SDL_KeyboardEvent &event,
                                const EventBundle &bundle) -> void override;
 
+    auto handle_activate(const EventBundle &bundle) -> void override;
+    auto handle_deactivate(const EventBundle &bundle) -> void override;
+
     typedef enum Mode {
         AXIS_ALIGNED,
         CAMERA_PLANE,

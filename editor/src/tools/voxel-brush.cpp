@@ -39,6 +39,10 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
     if (mods != SDL_KMOD_NONE)
         return;
 
+    // only care about left and right click
+    if (event.button != SDL_BUTTON_LEFT && event.button != SDL_BUTTON_RIGHT)
+        return;
+
     // confirmed we clicked! track this drag
     this->drag_buttonmask = this->drag_buttonmask | (1u << event.button);
 
@@ -184,4 +188,10 @@ auto VoxelBrush::stamp_brush(StampMode mode, glm::vec3 position,
         bundle.scene->set_voxel_empty(this->depth, position,
                                       skip_update_buffers);
     }
+}
+
+auto VoxelBrush::handle_activate(const EventBundle &bundle) -> void {}
+
+auto VoxelBrush::handle_deactivate(const EventBundle &bundle) -> void {
+    this->drag_buttonmask = 0u;
 }

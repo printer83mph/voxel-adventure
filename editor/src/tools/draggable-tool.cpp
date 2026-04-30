@@ -3,8 +3,9 @@
 #include <imgui.h>
 #include <vxng/geometry.h>
 
-DraggableTool::DraggableTool()
-    : flow_density(5.f), drag_buttonmask(0u), last_mouse_ndc_coords() {}
+DraggableTool::DraggableTool(float flow_density)
+    : flow_density(flow_density), drag_buttonmask(0u), last_mouse_ndc_coords() {
+}
 
 DraggableTool::~DraggableTool() {}
 

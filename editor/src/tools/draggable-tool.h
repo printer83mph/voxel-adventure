@@ -7,7 +7,7 @@
 
 class DraggableTool : public EditorTool {
   public:
-    DraggableTool();
+    DraggableTool(float flow_density);
     ~DraggableTool();
 
     virtual auto handle_mouse_button_event(const SDL_MouseButtonEvent &event,

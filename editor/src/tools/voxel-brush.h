@@ -31,7 +31,6 @@ class VoxelBrush : public DraggableTool {
     Mode current_mode;
     int size;
     int depth;
-    float flow_density;
 
     // locking drags to normals
     vxng::geometry::Ray plane_normal;

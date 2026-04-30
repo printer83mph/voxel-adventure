@@ -5,7 +5,7 @@
 #include <vxng/geometry.h>
 
 VoxelBrush::VoxelBrush()
-    : current_mode(Mode::AXIS_ALIGNED), size(1), depth(9), flow_density(5.f),
+    : DraggableTool(5.f), current_mode(Mode::AXIS_ALIGNED), size(1), depth(9),
       plane_normal(), brush_kernel(size) {}
 
 VoxelBrush::~VoxelBrush() {}

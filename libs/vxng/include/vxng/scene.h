@@ -9,6 +9,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 namespace vxng::scene {
@@ -25,6 +26,8 @@ class Scene {
 
     // --------- Queries / Mutation ---------
 
+    auto sample_position(glm::vec3 position) const
+        -> std::optional<glm::u8vec4>;
     auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
 
     auto set_voxel_filled(int depth, glm::vec3 position, glm::u8vec4 color,

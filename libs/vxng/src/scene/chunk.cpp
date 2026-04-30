@@ -64,6 +64,36 @@ auto Chunk::get_bounds() const -> geometry::AABB {
     return bounds;
 }
 
+auto Chunk::sample_position(glm::vec3 local_position) const
+    -> std::optional<glm::u8vec4> {
+    const OctreeNode *node = this->root_node.get();
+
+    // create required nodes to specific depth
+    for (int trav_depth = 0; (1u << trav_depth) <= this->resolution;
+         ++trav_depth) {
+        // if solid, just return color
+        if (node->is_leaf)
+            return node->leaf_data.color;
+
+        // dig into specific child node based on position
+        int child_index = ((uint32_t)(local_position.x >= 0) << 0) +
+                          ((uint32_t)(local_position.y >= 0) << 1) +
+                          ((uint32_t)(local_position.z >= 0) << 2);
+
+        // if we're internal, but child doesn't exist, there's nothing there
+        if (!node->children[child_index]) {
+            return {};
+        }
+
+        // put local position into terms of new node bounds
+        local_position = glm::fract((local_position + glm::vec3(0.5f)) * 2.0f) -
+                         glm::vec3(0.5f);
+        node = node->children[child_index].get();
+    }
+
+    return {};
+}
+
 auto Chunk::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // If not leaf but no children, return miss
     if (!root_node->is_leaf && !root_node->has_children()) {

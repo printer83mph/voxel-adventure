@@ -7,6 +7,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace vxng::scene {
@@ -54,6 +55,8 @@ class Chunk {
 
     // --------- Querying ---------
 
+    auto sample_position(glm::vec3 local_position) const
+        -> std::optional<glm::u8vec4>;
     auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
 
     // --------- Mutation ---------

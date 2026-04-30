@@ -4,6 +4,9 @@ add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
     PRIVATE
+        src/tools/shared/brush-kernel.cpp
+        src/tools/draggable-tool.cpp
+        src/tools/paint-brush.cpp
         src/tools/voxel-brush.cpp
         src/cursors.cpp
         src/editor.cpp

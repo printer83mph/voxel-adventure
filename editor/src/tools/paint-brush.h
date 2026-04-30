@@ -6,10 +6,10 @@
 #include <vxng/geometry.h>
 #include <vxng/scene.h>
 
-class VoxelBrush : public DraggableTool {
+class PaintBrush : public DraggableTool {
   public:
-    VoxelBrush();
-    ~VoxelBrush();
+    PaintBrush();
+    ~PaintBrush();
 
     auto get_tool_name() -> const char * override;
     auto render_ui() -> void override;
@@ -22,31 +22,16 @@ class VoxelBrush : public DraggableTool {
                                const EventBundle &bundle) -> void override;
 
   private:
-    typedef enum Mode {
-        AXIS_ALIGNED,
-        CAMERA_PLANE,
-    } Mode;
-
     // params
-    Mode current_mode;
     int size;
-    int depth;
-
-    // locking drags to normals
-    vxng::geometry::Ray plane_normal;
 
     // stamping
     BrushKernel brush_kernel;
-    typedef enum StampMode {
-        PLACE,
-        DELETE,
-    } StampMode;
 
     auto handle_drag_step(int step_idx, int total_steps,
                           glm::vec2 step_mouse_ndc_coords,
                           const EventBundle &bundle) -> void override;
 
-    auto stamp_brush(StampMode mode, glm::vec3 position,
-                     const EventBundle &bundle,
+    auto stamp_paint(glm::vec3 position, const EventBundle &bundle,
                      bool skip_update_buffers = false) -> void;
 };

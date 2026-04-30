@@ -33,4 +33,7 @@ class EditorTool {
         -> void = 0;
     virtual auto handle_keyboard_event(const SDL_KeyboardEvent &event,
                                        const EventBundle &bundle) -> void = 0;
+
+    virtual auto handle_activate(const EventBundle &bundle) -> void = 0;
+    virtual auto handle_deactivate(const EventBundle &bundle) -> void = 0;
 };

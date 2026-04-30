@@ -3,6 +3,7 @@
 #include "cursors.h"
 #include "palette.h"
 #include "tool.h"
+#include "tools/paint-brush.h"
 #include "tools/tools.h"
 
 #include <SDL3/SDL.h>
@@ -57,8 +58,10 @@ class Editor {
 
     struct {
         VoxelBrush voxel_brush;
+        PaintBrush paint_brush;
     } tools;
     EditorTool *current_tool;
+    bool is_tool_active;
     Palette palette;
 
     struct {
@@ -68,6 +71,8 @@ class Editor {
 
     // menu options
     auto new_empty_scene() -> void;
+
+    auto set_active_tool(EditorTool *tool) -> void;
 
     auto make_event_bundle() -> EditorTool::EventBundle;
 };

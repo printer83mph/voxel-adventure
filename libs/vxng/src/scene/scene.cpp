@@ -101,6 +101,19 @@ auto Scene::load_vox_file(const std::vector<uint8_t> &buffer) -> void {
     ogt_vox_destroy_scene(scene);
 }
 
+auto Scene::sample_position(glm::vec3 position) const
+    -> std::optional<glm::u8vec4> {
+    auto chunked_info = get_chunked_location_info(position);
+    auto chunk = this->chunks.find(chunked_info.chunk_coord);
+
+    if (chunk == this->chunks.end()) {
+        return {}; // no chunk initialized here, return nothing
+    }
+
+    // chunk exists - sample it!
+    return chunk->second->sample_position(chunked_info.local_position);
+}
+
 auto Scene::raycast(const geometry::Ray &ray) const -> geometry::RaycastResult {
     // scan through chunks for any intersections
     geometry::RaycastResult closest_hit;

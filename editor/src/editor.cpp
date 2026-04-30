@@ -352,7 +352,10 @@ auto Editor::run_gui() -> void {
         ImGui::SeparatorText("Tool Selection");
         if (ImGui::RadioButton("Voxel Brush",
                                this->current_tool == &this->tools.voxel_brush))
-            this->current_tool = &this->tools.voxel_brush;
+            set_active_tool(&this->tools.voxel_brush);
+        if (ImGui::RadioButton("Paintbrush",
+                               this->current_tool == &this->tools.paint_brush))
+            set_active_tool(&this->tools.paint_brush);
 
         ImGui::TextWrapped("More tools on the way!");
 
@@ -572,6 +575,10 @@ auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
 
     // camera movement (only if alt is held)
     if (mods & SDL_KMOD_ALT) {
+        if (this->is_tool_active) {
+            this->current_tool->handle_deactivate(make_event_bundle());
+            this->is_tool_active = false;
+        }
         if (event.state & SDL_BUTTON_LMASK) {
             this->viewport_camera.handle_rotation(event.xrel, event.yrel);
             this->cursors.set_cursor(Cursors::Variant::MOVE);
@@ -584,16 +591,28 @@ auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
         }
     } else {
         // no mod held, pass off to current tool
-        this->current_tool->handle_mouse_motion_event(event,
-                                                      make_event_bundle());
+        auto event_bundle = make_event_bundle();
+        if (!this->is_tool_active) {
+            this->current_tool->handle_activate(make_event_bundle());
+            this->is_tool_active = true;
+        }
+        this->current_tool->handle_mouse_motion_event(event, event_bundle);
     }
 }
 
 auto Editor::handle_mouse_down(const SDL_MouseButtonEvent &event) -> void {
+    SDL_Keymod mods = SDL_GetModState();
+    if (mods & SDL_KMOD_ALT)
+        return; // using navigation mode
+
     this->current_tool->handle_mouse_button_event(event, make_event_bundle());
 }
 
 auto Editor::handle_mouse_up(const SDL_MouseButtonEvent &event) -> void {
+    SDL_Keymod mods = SDL_GetModState();
+    if (mods & SDL_KMOD_ALT)
+        return; // using navigation mode
+
     this->current_tool->handle_mouse_button_event(event, make_event_bundle());
 }
 
@@ -604,6 +623,15 @@ auto Editor::new_empty_scene() -> void {
     this->scene->init_webgpu(this->wgpu.device);
 
     this->renderer.set_scene(this->scene.get());
+}
+
+auto Editor::set_active_tool(EditorTool *tool) -> void {
+    auto event_bundle = make_event_bundle();
+
+    if (this->is_tool_active)
+        current_tool->handle_deactivate(event_bundle);
+    this->current_tool = tool;
+    tool->handle_activate(event_bundle);
 }
 
 auto Editor::make_event_bundle() -> EditorTool::EventBundle {

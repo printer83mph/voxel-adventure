@@ -1,11 +1,12 @@
 #include "voxel-brush.h"
+#include "tools/draggable-tool.h"
 
 #include <imgui.h>
 #include <vxng/geometry.h>
 
 VoxelBrush::VoxelBrush()
-    : current_mode(Mode::AXIS_ALIGNED), size(1), depth(9), flow_density(5.f),
-      plane_normal(), last_mouse_ndc_coords(), abs_brush_kernel() {}
+    : DraggableTool(5.f), current_mode(Mode::AXIS_ALIGNED), size(1), depth(9),
+      plane_normal(), brush_kernel(size) {}
 
 VoxelBrush::~VoxelBrush() {}
 
@@ -21,21 +22,22 @@ auto VoxelBrush::render_ui() -> void {
         this->current_mode = Mode::CAMERA_PLANE;
 
     if (ImGui::SliderInt("Size", &this->size, 1, 5))
-        compute_brush_kernel();
+        this->brush_kernel.set_size(this->size);
 
     ImGui::SliderInt("Depth", &this->depth, 0, 9);
-    ImGui::SliderFloat("Flow Density", &this->flow_density, 0.f, 20.f);
+    this->render_flow_density_ui();
 }
 
 auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
                                            const EventBundle &bundle) -> void {
+    DraggableTool::handle_mouse_button_event(event, bundle);
+
     // we don't care about mouse up
     if (!event.down)
         return;
 
-    // don't do anything if any mods are held
-    SDL_Keymod mods = SDL_GetModState();
-    if (mods != SDL_KMOD_NONE)
+    // only care about left and right click
+    if (event.button != SDL_BUTTON_LEFT && event.button != SDL_BUTTON_RIGHT)
         return;
 
     auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
@@ -83,6 +85,8 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
 
 auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
                                            const EventBundle &bundle) -> void {
+    DraggableTool::handle_mouse_motion_event(event, bundle);
+
     auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
     auto raycast_result = bundle.scene->raycast(mouse_ray);
 
@@ -92,62 +96,40 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
     } else {
         bundle.cursors->set_cursor(Cursors::Variant::DEFAULT);
     }
-
-    // do dragging logic
-    if (event.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK)) {
-        float mouse_move_distance =
-            ((bundle.mouse_ndc_coords - this->last_mouse_ndc_coords) *
-             glm::vec2(bundle.camera->get_aspect_ratio(), 1.f))
-                .length();
-
-        int flow_step_count =
-            glm::ceil(mouse_move_distance * this->flow_density);
-
-        for (int step = 1; step <= flow_step_count; ++step) {
-            bool skip_update_buffers = step < flow_step_count;
-            glm::vec2 lerped_mouse_ndc_coords =
-                glm::mix(this->last_mouse_ndc_coords, bundle.mouse_ndc_coords,
-                         (float)step / (float)flow_step_count);
-
-            auto mouse_ray =
-                bundle.camera->screen_to_ray(lerped_mouse_ndc_coords);
-
-            // project mouse ray onto plane defined by plane_normal
-            float denom =
-                glm::dot(this->plane_normal.direction, mouse_ray.direction);
-            if (std::abs(denom) > 1e-6f) {
-                float t = glm::dot(this->plane_normal.origin - mouse_ray.origin,
-                                   this->plane_normal.direction) /
-                          denom;
-                if (t >= 0.0f) {
-                    // place voxel if hit
-                    glm::vec3 intersection =
-                        mouse_ray.origin + t * mouse_ray.direction;
-
-                    bool placing = event.state & SDL_BUTTON_LEFT;
-                    // add/remove voxels
-                    stamp_brush(placing ? StampMode::PLACE : StampMode::DELETE,
-                                intersection, bundle, skip_update_buffers);
-                }
-            }
-        }
-    }
-
-    this->last_mouse_ndc_coords = bundle.mouse_ndc_coords;
 }
 
 auto VoxelBrush::handle_keyboard_event(const SDL_KeyboardEvent &event,
                                        const EventBundle &bundle) -> void {}
 
-auto VoxelBrush::compute_brush_kernel() -> void {
-    this->abs_brush_kernel.clear();
+auto VoxelBrush::handle_drag_step(int step_idx, int total_steps,
+                                  glm::vec2 step_mouse_ndc_coords,
+                                  const EventBundle &bundle) -> void {
 
-    for (int x = 0; x < this->size; ++x) {
-        for (int y = 0; y < this->size; ++y) {
-            for (int z = 0; z < this->size; ++z) {
-                float magnitude = glm::sqrt(x * x + y * y + z * z);
-                this->abs_brush_kernel[glm::uvec3(x, y, z)] =
-                    magnitude < (this->size - 0.5f);
+    bool is_lmb_dragging = this->is_mousebutton_dragging(SDL_BUTTON_LEFT);
+    bool is_rmb_dragging = this->is_mousebutton_dragging(SDL_BUTTON_RIGHT);
+
+    if (is_lmb_dragging || is_rmb_dragging) {
+        bool skip_update_buffers = step_idx < total_steps - 1;
+
+        auto mouse_ray = bundle.camera->screen_to_ray(step_mouse_ndc_coords);
+
+        // project mouse ray onto plane defined by plane_normal
+        float denom =
+            glm::dot(this->plane_normal.direction, mouse_ray.direction);
+        if (std::abs(denom) > 1e-6f) {
+            float t = glm::dot(this->plane_normal.origin - mouse_ray.origin,
+                               this->plane_normal.direction) /
+                      denom;
+            if (t >= 0.0f) {
+                // place voxel if hit
+                glm::vec3 intersection =
+                    mouse_ray.origin + t * mouse_ray.direction;
+
+                StampMode stamp_mode =
+                    (is_lmb_dragging) ? StampMode::PLACE : StampMode::DELETE;
+                // add/remove voxels
+                stamp_brush(stamp_mode, intersection, bundle,
+                            skip_update_buffers);
             }
         }
     }
@@ -159,37 +141,14 @@ auto VoxelBrush::stamp_brush(StampMode mode, glm::vec3 position,
     float voxel_size =
         bundle.scene->get_chunk_scale() / (float)(1u << this->depth);
 
-    for (int x = 0; x < this->size; ++x) {
-        for (int y = 0; y < this->size; ++y) {
-            for (int z = 0; z < this->size; ++z) {
-                auto kernel_result =
-                    this->abs_brush_kernel.find(glm::uvec3(x, y, z));
-
-                // skip if not found, or if marked as
-                if (kernel_result == this->abs_brush_kernel.end())
-                    continue;
-                if (!kernel_result->second)
-                    continue;
-
-                for (int i = 0; i < 8; ++i) {
-                    glm::vec3 signs = glm::vec3(1u & (i >> 0u), 1u & (i >> 1u),
-                                                1u & (i >> 2u)) *
-                                          2.f -
-                                      1.f;
-
-                    if (mode == StampMode::PLACE) {
-                        bundle.scene->set_voxel_filled(
-                            this->depth,
-                            position + glm::vec3(x, y, z) * signs * voxel_size,
-                            bundle.current_color, true);
-                    } else {
-                        bundle.scene->set_voxel_empty(
-                            this->depth,
-                            position + glm::vec3(x, y, z) * signs * voxel_size,
-                            true);
-                    }
-                }
-            }
+    for (auto &ioffset : this->brush_kernel.get_kernel()) {
+        if (mode == StampMode::PLACE) {
+            bundle.scene->set_voxel_filled(
+                this->depth, position + glm::vec3(ioffset) * voxel_size,
+                bundle.current_color, true);
+        } else {
+            bundle.scene->set_voxel_empty(
+                this->depth, position + glm::vec3(ioffset) * voxel_size, true);
         }
     }
 

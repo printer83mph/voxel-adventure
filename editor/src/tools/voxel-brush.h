@@ -33,6 +33,7 @@ class VoxelBrush : public EditorTool {
     float flow_density;
 
     // for tracking drags
+    uint32_t drag_buttonmask;
     vxng::geometry::Ray plane_normal;
     glm::vec2 last_mouse_ndc_coords;
 

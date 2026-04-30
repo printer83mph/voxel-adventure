@@ -5,7 +5,8 @@
 
 VoxelBrush::VoxelBrush()
     : current_mode(Mode::AXIS_ALIGNED), size(1), depth(9), flow_density(5.f),
-      plane_normal(), last_mouse_ndc_coords(), brush_kernel(size) {}
+      drag_buttonmask(0u), plane_normal(), last_mouse_ndc_coords(),
+      brush_kernel(size) {}
 
 VoxelBrush::~VoxelBrush() {}
 
@@ -37,6 +38,9 @@ auto VoxelBrush::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
     SDL_Keymod mods = SDL_GetModState();
     if (mods != SDL_KMOD_NONE)
         return;
+
+    // confirmed we clicked! track this drag
+    this->drag_buttonmask = this->drag_buttonmask | (1u << event.button);
 
     auto mouse_ray = bundle.camera->screen_to_ray(bundle.mouse_ndc_coords);
     auto raycast_result = bundle.scene->raycast(mouse_ray);
@@ -93,8 +97,22 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
         bundle.cursors->set_cursor(Cursors::Variant::DEFAULT);
     }
 
-    // do dragging logic
-    if (event.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK)) {
+    bool is_lmb_held = event.state & SDL_BUTTON_LMASK;
+    bool is_rmb_held = event.state & SDL_BUTTON_RMASK;
+
+    // clear drag state if button not held
+    if (!is_lmb_held)
+        this->drag_buttonmask =
+            ~(~this->drag_buttonmask | (1u << SDL_BUTTON_LEFT));
+    if (!is_rmb_held)
+        this->drag_buttonmask =
+            ~(~this->drag_buttonmask | (1u << SDL_BUTTON_RIGHT));
+
+    bool is_lmb_dragging = this->drag_buttonmask & (1u << SDL_BUTTON_LEFT);
+    bool is_rmb_dragging = this->drag_buttonmask & (1u << SDL_BUTTON_RIGHT);
+
+    // check dragging buttonmask
+    if (is_lmb_dragging || is_rmb_dragging) {
         float mouse_move_distance =
             ((bundle.mouse_ndc_coords - this->last_mouse_ndc_coords) *
              glm::vec2(bundle.camera->get_aspect_ratio(), 1.f))
@@ -124,7 +142,7 @@ auto VoxelBrush::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
                     glm::vec3 intersection =
                         mouse_ray.origin + t * mouse_ray.direction;
 
-                    StampMode stamp_mode = (event.state & SDL_BUTTON_LEFT)
+                    StampMode stamp_mode = (is_lmb_dragging)
                                                ? StampMode::PLACE
                                                : StampMode::DELETE;
                     // add/remove voxels

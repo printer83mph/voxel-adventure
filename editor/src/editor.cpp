@@ -353,6 +353,9 @@ auto Editor::run_gui() -> void {
         if (ImGui::RadioButton("Voxel Brush",
                                this->current_tool == &this->tools.voxel_brush))
             set_active_tool(&this->tools.voxel_brush);
+        if (ImGui::RadioButton("Paintbrush",
+                               this->current_tool == &this->tools.paint_brush))
+            set_active_tool(&this->tools.paint_brush);
 
         ImGui::TextWrapped("More tools on the way!");
 

@@ -59,6 +59,7 @@ class Editor {
         VoxelBrush voxel_brush;
     } tools;
     EditorTool *current_tool;
+    bool is_tool_active;
     Palette palette;
 
     struct {
@@ -68,6 +69,8 @@ class Editor {
 
     // menu options
     auto new_empty_scene() -> void;
+
+    auto set_active_tool(EditorTool *tool) -> void;
 
     auto make_event_bundle() -> EditorTool::EventBundle;
 };

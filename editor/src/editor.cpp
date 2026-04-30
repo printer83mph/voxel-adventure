@@ -598,10 +598,18 @@ auto Editor::handle_mouse_motion(const SDL_MouseMotionEvent &event) -> void {
 }
 
 auto Editor::handle_mouse_down(const SDL_MouseButtonEvent &event) -> void {
+    SDL_Keymod mods = SDL_GetModState();
+    if (mods & SDL_KMOD_ALT)
+        return; // using navigation mode
+
     this->current_tool->handle_mouse_button_event(event, make_event_bundle());
 }
 
 auto Editor::handle_mouse_up(const SDL_MouseButtonEvent &event) -> void {
+    SDL_Keymod mods = SDL_GetModState();
+    if (mods & SDL_KMOD_ALT)
+        return; // using navigation mode
+
     this->current_tool->handle_mouse_button_event(event, make_event_bundle());
 }
 

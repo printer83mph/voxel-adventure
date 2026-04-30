@@ -23,7 +23,7 @@ auto DraggableTool::handle_mouse_button_event(const SDL_MouseButtonEvent &event,
     -> void {
     if (event.down) {
         // start tracking this drag
-        this->drag_buttonmask = this->drag_buttonmask | (1u << event.button);
+        this->drag_buttonmask |= SDL_BUTTON_MASK(event.button);
     }
 }
 
@@ -53,12 +53,14 @@ auto DraggableTool::handle_mouse_motion_event(const SDL_MouseMotionEvent &event,
         int flow_step_count =
             glm::ceil(mouse_move_distance * this->flow_density);
 
-        for (int step = 1; step <= flow_step_count; ++step) {
+        for (int step = 0; step < flow_step_count; ++step) {
             glm::vec2 lerped_mouse_ndc_coords =
                 glm::mix(this->last_mouse_ndc_coords, bundle.mouse_ndc_coords,
-                         (float)step / (float)flow_step_count);
+                         (float)(step + 1.f) / (float)flow_step_count);
 
-            handle_drag_step(step, flow_step_count, lerped_mouse_ndc_coords);
+            // pass to implementer
+            handle_drag_step(step, flow_step_count, lerped_mouse_ndc_coords,
+                             bundle);
         }
     }
 

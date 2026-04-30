@@ -35,5 +35,6 @@ class DraggableTool : public EditorTool {
 
     // to be overridden by implementations
     virtual auto handle_drag_step(int step_idx, int total_steps,
-                                  glm::vec2 step_ndc_mouse_coords) -> void = 0;
+                                  glm::vec2 step_ndc_mouse_coords,
+                                  const EventBundle &bundle) -> void = 0;
 };

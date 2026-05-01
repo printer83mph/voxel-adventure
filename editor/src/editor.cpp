@@ -19,7 +19,9 @@ Editor::Editor()
     : renderer(), viewport_camera(),
       scene(std::make_unique<vxng::scene::Scene>(SCENE_RESOLUTION,
                                                  DEFAULT_SCENE_SCALE)),
-      cursors(), tools(), current_tool(&tools.voxel_brush), palette() {
+      cursors(), tools(), current_tool(&tools.voxel_brush), palette(),
+      light_dir(0.5, 1.0, 0.3), dirlight_color(0.8), ambient_light_color(0.2),
+      background_color(0.1) {
     palette.init_default_colors();
 };
 
@@ -161,6 +163,11 @@ auto Editor::init() -> int {
 
     // set initial renderer size (shader globals)
     this->renderer.resize(width, height);
+    // set renderer light params
+    this->renderer.set_light_dir(this->light_dir);
+    this->renderer.set_dirlight_color(this->dirlight_color);
+    this->renderer.set_ambient_color(this->ambient_light_color);
+    this->renderer.set_background_color(this->background_color);
 
     this->viewport_camera.init_webgpu(this->wgpu.device);
     this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
@@ -235,7 +242,8 @@ auto Editor::draw_to_surface() -> void {
     renderPassColorAttachment.resolveTarget = nullptr;
     renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
-    renderPassColorAttachment.clearValue = wgpu::Color{0.0, 0.0, 0.0, 1.0};
+    renderPassColorAttachment.clearValue = wgpu::Color{
+        background_color.r, background_color.g, background_color.b, 1.0};
 
     // depth attachment for multi-chunk rendering
     wgpu::RenderPassDepthStencilAttachment depthAttachment;
@@ -323,7 +331,38 @@ auto Editor::run_gui() -> void {
         ImGui::Begin("Options");
         if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
 
+            // Light settings
+            ImGui::SeparatorText("Lighting");
+
+            ImGui::Text("Ambient Light Color");
+            if (ImGui::ColorEdit3("##AmbientLightColor",
+                                  &this->ambient_light_color[0])) {
+                this->renderer.set_ambient_color(this->ambient_light_color);
+            };
+
+            ImGui::Text("Directional Light Color");
+            if (ImGui::ColorEdit3("##DirectionalLightColor",
+                                  &this->dirlight_color[0])) {
+                this->renderer.set_dirlight_color(this->dirlight_color);
+            };
+
+            ImGui::Text("Light Direction");
+            if (ImGui::SliderFloat3("##DirectionalLightDirection",
+                                    &this->light_dir[0], -1.0f, 1.0f)) {
+                this->renderer.set_light_dir(this->light_dir);
+            };
+
+            ImGui::Text("Background Color");
+            if (ImGui::ColorEdit3("##BackgroundColor",
+                                  &this->background_color[0])) {
+                this->renderer.set_background_color(this->background_color);
+            };
+
+            ImGui::Dummy(ImVec2(0.0f, 16.0f));
+
             // Scene Resolution
+            ImGui::SeparatorText("Scale");
+
             float scale = this->scene->get_chunk_scale();
             int unit_voxel_depth = glm::log2(512.f / scale);
             int original_uvd = unit_voxel_depth;

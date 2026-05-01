@@ -6,6 +6,9 @@ const std::string CHUNK_WGSL = R"wgsl(
 // Uniform buffer for global settings
 struct Globals {
     aspectRatio: f32,
+    lightDir: vec3<f32>,
+    directionalLight: vec3<f32>,
+    ambientLight: vec3<f32>,
 }
 
 // Uniform buffer for camera settings
@@ -378,10 +381,9 @@ fn fs_main(input: VertexOutput) -> FragmentOutput {
         discard;
     } else {
         // simple half lambert lighting
-        let lightDir = normalize(vec3<f32>(0.5, 1.0, 0.3));
-        let ambient = 0.2;
-        let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0);
-        let lighting = ambient + (1.0 - ambient) * diffuse;
+        let lightDir = normalize(globals.lightDir);
+        let diffuse = max(dot(result.normal, lightDir) * 0.5 + 0.5, 0.0) * globals.directionalLight;
+        let lighting = globals.ambientLight + diffuse;
 
         output.color = vec4<f32>(result.color.rgb * lighting, result.color.a);
         output.depth = computeDepth(viewRay, result.t);

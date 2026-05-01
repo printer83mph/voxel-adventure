@@ -19,6 +19,10 @@ class Renderer {
     auto init_webgpu(wgpu::Device device) -> bool;
     auto get_depth_texture_view() const -> wgpu::TextureView;
     auto resize(int width, int height) -> void;
+    auto set_light_dir(glm::vec3 light_dir) -> void;
+    auto set_dirlight_color(glm::vec3 color) -> void;
+    auto set_ambient_color(glm::vec3 color) -> void;
+    auto set_background_color(glm::vec3 color) -> void;
     auto set_scene(vxng::scene::Scene const *scene) -> void;
     auto set_active_camera(const vxng::camera::Camera *camera) -> void;
     auto render(wgpu::RenderPassEncoder &render_pass) const -> void;
@@ -44,6 +48,8 @@ class Renderer {
 
     const vxng::camera::Camera *active_camera;
     const vxng::scene::Scene *active_scene;
+
+    glm::vec3 background_color;
 };
 
 } // namespace vxng

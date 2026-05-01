@@ -69,6 +69,11 @@ class Editor {
         bool show_options = true;
     } panels;
 
+    glm::vec3 light_dir;
+    glm::vec3 dirlight_color;
+    glm::vec3 ambient_light_color;
+    glm::vec3 background_color;
+
     // menu options
     auto new_empty_scene() -> void;
 

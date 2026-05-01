@@ -11,7 +11,7 @@
 
 namespace vxng {
 
-Renderer::Renderer() {};
+Renderer::Renderer() : background_color(0.3) {};
 Renderer::~Renderer() {
     // WebGPU objects are automatically released when their reference counted
     // handles all go out of scope
@@ -34,7 +34,7 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
     {
         wgpu::BufferDescriptor globals_desc;
         globals_desc.label = "Scene globals uniform buffer";
-        globals_desc.size = 4;
+        globals_desc.size = 64;
         globals_desc.usage =
             wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
         globals_buffer = device.CreateBuffer(&globals_desc);
@@ -52,7 +52,7 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         globals_layout_entry.visibility =
             wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
         globals_layout_entry.buffer.type = wgpu::BufferBindingType::Uniform;
-        globals_layout_entry.buffer.minBindingSize = 4;
+        globals_layout_entry.buffer.minBindingSize = 64;
 
         wgpu::BindGroupLayoutDescriptor globals_bgl_desc;
         globals_bgl_desc.label = "Globals bind group layout";
@@ -85,7 +85,7 @@ auto Renderer::init_webgpu(wgpu::Device device) -> bool {
         globals_entry.binding = 0;
         globals_entry.buffer = globals_buffer;
         globals_entry.offset = 0;
-        globals_entry.size = 4;
+        globals_entry.size = 64;
 
         wgpu::BindGroupDescriptor bg_desc;
         bg_desc.layout = globals_bind_group_layout;
@@ -212,6 +212,25 @@ auto Renderer::resize(int width, int height) -> void {
 
     create_depth_texture(width, height);
 };
+
+auto Renderer::set_light_dir(glm::vec3 dir) -> void {
+    this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 16, &dir,
+                                 sizeof(float) * 3);
+}
+
+auto Renderer::set_dirlight_color(glm::vec3 color) -> void {
+    this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 32, &color,
+                                 sizeof(float) * 3);
+}
+
+auto Renderer::set_ambient_color(glm::vec3 color) -> void {
+    this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 48, &color,
+                                 sizeof(float) * 3);
+}
+
+auto Renderer::set_background_color(glm::vec3 color) -> void {
+    this->background_color = color;
+}
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {
     this->active_scene = scene;

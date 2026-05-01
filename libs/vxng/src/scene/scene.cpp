@@ -167,6 +167,16 @@ auto Scene::set_voxel_empty(int depth, glm::vec3 position,
                                   skip_update_buffers);
 }
 
+auto Scene::force_update_chunk_buffers(glm::vec3 position) -> void {
+    auto chunked_location = get_chunked_location_info(position);
+    auto &target_chunk = chunks.at(chunked_location.chunk_coord);
+
+    if (!target_chunk)
+        return;
+
+    target_chunk->force_update_buffers();
+}
+
 auto Scene::get_chunk_scale() const -> float { return this->chunk_scale; }
 
 auto Scene::get_chunk_resolution() const -> int {

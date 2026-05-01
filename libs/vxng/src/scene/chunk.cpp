@@ -1,5 +1,6 @@
 #include "chunk.h"
 
+#include <stack>
 #include <webgpu/webgpu_cpp.h>
 
 #include <cmath>
@@ -62,6 +63,31 @@ auto Chunk::get_bounds() const -> geometry::AABB {
     bounds.min = position - glm::vec3(half_size);
     bounds.max = position + glm::vec3(half_size);
     return bounds;
+}
+
+auto Chunk::is_empty() const -> bool {
+    // do DFS, if we find any leaf, it's over bros
+    std::stack<OctreeNode *> node_stack = {};
+
+    node_stack.push(this->root_node.get());
+    while (!node_stack.empty()) {
+        OctreeNode *node = node_stack.top();
+        node_stack.pop();
+
+        if (node->is_leaf)
+            return false;
+
+        if (!node->has_children())
+            continue;
+
+        for (auto &child_uptr : node->children) {
+            if (child_uptr)
+                node_stack.push(child_uptr.get());
+        }
+    }
+
+    // no leaves found, we are empty
+    return true;
 }
 
 auto Chunk::sample_position(glm::vec3 local_position) const
@@ -222,6 +248,33 @@ auto Chunk::reposition(glm::vec3 pos, float scale) -> void {
     this->scale = scale;
 
     update_buffers();
+}
+
+auto Chunk::collect_colors() const -> std::unordered_set<glm::u8vec4> {
+    // do DFS, collect all leaf colors into set
+    std::unordered_set<glm::u8vec4> colors = {};
+    std::stack<OctreeNode *> node_stack = {};
+
+    node_stack.push(this->root_node.get());
+    while (!node_stack.empty()) {
+        OctreeNode *node = node_stack.top();
+        node_stack.pop();
+
+        if (node->is_leaf) {
+            colors.insert(node->leaf_data.color);
+            continue;
+        }
+
+        if (!node->has_children())
+            continue;
+
+        for (auto &child_uptr : node->children) {
+            if (child_uptr)
+                node_stack.push(child_uptr.get());
+        }
+    }
+
+    return colors;
 }
 
 auto Chunk::set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,

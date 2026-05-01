@@ -8,6 +8,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 namespace vxng::scene {
@@ -55,6 +56,7 @@ class Chunk {
 
     // --------- Querying ---------
 
+    auto is_empty() const -> bool;
     auto sample_position(glm::vec3 local_position) const
         -> std::optional<glm::u8vec4>;
     auto raycast(const geometry::Ray &ray) const -> geometry::RaycastResult;
@@ -76,6 +78,8 @@ class Chunk {
 
     /** Sets new position and scale, then updates buffers */
     auto reposition(glm::vec3 pos, float scale) -> void;
+
+    auto collect_colors() const -> std::unordered_set<glm::u8vec4>;
 
     // --------- Rendering ---------
 

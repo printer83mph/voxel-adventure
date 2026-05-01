@@ -34,6 +34,7 @@ class Scene {
                           bool skip_update_buffers = false) -> void;
     auto set_voxel_empty(int depth, glm::vec3 position,
                          bool skip_update_buffers = false) -> void;
+    auto force_update_chunk_buffers(glm::vec3 position) -> void;
 
     // --------- Utility ---------
 

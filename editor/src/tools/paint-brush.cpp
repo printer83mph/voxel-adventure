@@ -5,7 +5,10 @@
 
 #include <cmath>
 
-PaintBrush::PaintBrush() : DraggableTool(5.f), size(2), brush_kernel(size) {}
+PaintBrush::PaintBrush()
+    : DraggableTool(5.f), mode(Mode::FULL_KERNEL), size(2),
+      airbrush_strength(0.025f), brush_kernel(size), rd(), rgen(rd()),
+      rdist(0.f, 1.f) {}
 
 PaintBrush::~PaintBrush() {}
 
@@ -13,8 +16,23 @@ auto PaintBrush::get_tool_name() -> const char * { return "Paintbrush"; }
 
 // no ui for this yet
 auto PaintBrush::render_ui() -> void {
+    if (ImGui::RadioButton("Normal", (int *)&this->mode,
+                           (int)Mode::FULL_KERNEL)) {
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Airbrush", (int *)&this->mode,
+                           (int)Mode::AIRBRUSH)) {
+    }
+    ImGui::Separator();
+
     if (ImGui::SliderInt("Size", &this->size, 1, 10))
         this->brush_kernel.set_size(this->size);
+
+    if (this->mode == Mode::AIRBRUSH) {
+        if (ImGui::SliderFloat("Airbrush Strength", &this->airbrush_strength,
+                               0.001f, 0.025f))
+            this->brush_kernel.set_size(this->size);
+    }
 
     this->render_flow_density_ui();
 }
@@ -96,6 +114,11 @@ auto PaintBrush::stamp_paint(glm::vec3 position, const EventBundle &bundle,
     for (auto &ioffset : this->brush_kernel.get_kernel()) {
         glm::vec3 offset_position = position + glm::vec3(ioffset) * voxel_size;
 
+        if (this->mode == Mode::AIRBRUSH) {
+            if (!sample_airbrush_chance(1.f))
+                continue;
+        }
+
         auto sample = bundle.scene->sample_position(offset_position);
         if (sample.has_value() && sample.value() != bundle.current_color)
             bundle.scene->set_voxel_filled(max_depth, offset_position,
@@ -103,6 +126,28 @@ auto PaintBrush::stamp_paint(glm::vec3 position, const EventBundle &bundle,
     }
 
     // set last guy
-    bundle.scene->set_voxel_filled(max_depth, position, bundle.current_color,
-                                   skip_update_buffers);
+
+    switch (this->mode) {
+    case Mode::AIRBRUSH: {
+        if (sample_airbrush_chance(1.f))
+            bundle.scene->set_voxel_filled(max_depth, position,
+                                           bundle.current_color, true);
+        if (!skip_update_buffers) {
+            // ensure we always update buffers if requested
+            bundle.scene->force_update_chunk_buffers(position);
+        }
+        break;
+    }
+    case Mode::FULL_KERNEL: {
+        bundle.scene->set_voxel_filled(
+            max_depth, position, bundle.current_color, skip_update_buffers);
+        break;
+    }
+    }
+}
+
+auto PaintBrush::sample_airbrush_chance(float factor) -> bool {
+    // random value from 0 to 1
+    float rand = this->rdist(this->rgen);
+    return rand < this->airbrush_strength * factor;
 }

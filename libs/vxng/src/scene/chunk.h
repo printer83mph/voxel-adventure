@@ -76,6 +76,7 @@ class Chunk {
 
     /** Sets new position and scale, then updates buffers */
     auto reposition(glm::vec3 pos, float scale) -> void;
+    auto force_update_buffers() -> void;
 
     // --------- Rendering ---------
 

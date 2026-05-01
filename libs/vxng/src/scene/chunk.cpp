@@ -224,6 +224,8 @@ auto Chunk::reposition(glm::vec3 pos, float scale) -> void {
     update_buffers();
 }
 
+auto Chunk::force_update_buffers() -> void { update_buffers(); }
+
 auto Chunk::set_voxel_grid_data(const uint8_t *data, glm::ivec3 size,
                                 const std::array<glm::u8vec4, 256> &palette,
                                 glm::ivec3 offset) -> void {

@@ -167,7 +167,7 @@ auto Editor::init() -> int {
     this->renderer.set_active_camera(&this->viewport_camera);
 
     this->scene->init_webgpu(this->wgpu.device);
-    this->scene->fill_basic_plane({255, 255, 255, 255});
+    this->scene->fill_center_cubes(7, {255, 255, 255, 255});
     this->renderer.set_scene(this->scene.get());
 
     // initialize imgui
@@ -289,6 +289,10 @@ auto Editor::run_gui() -> void {
                 this->new_empty_scene();
             }
             if (ImGui::BeginMenu("New (Templates)")) {
+                if (ImGui::MenuItem("8x8 Cube")) {
+                    this->new_empty_scene();
+                    this->scene->fill_center_cubes(7, {255, 255, 255, 255});
+                }
                 if (ImGui::MenuItem("Flat Plane")) {
                     this->new_empty_scene();
                     this->scene->fill_basic_plane({255, 255, 255, 255});

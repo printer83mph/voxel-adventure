@@ -106,10 +106,11 @@ auto Scene::load_vox_file(const std::vector<uint8_t> &buffer) -> void {
             }
         }
 
+        auto ouraxes_size =
+            glm::ivec3(model->size_x, model->size_z, model->size_y);
         this->chunks[{0, 0, 0}]->set_voxel_grid_data(
-            transformed_voxel_data.data(),
-            {model->size_x, model->size_y, model->size_z}, palette,
-            {256, 256, 256});
+            transformed_voxel_data.data(), ouraxes_size, palette,
+            glm::ivec3(256) - ouraxes_size / 2);
     }
 
     ogt_vox_destroy_scene(scene);

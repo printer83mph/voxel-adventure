@@ -52,6 +52,20 @@ auto Scene::fill_basic_plane(glm::u8vec4 color) -> void {
     this->set_voxel_filled(1, {delta, -delta, -delta}, color);
 }
 
+auto Scene::fill_center_cubes(int depth, glm::u8vec4 color) -> void {
+    // set 8 center cubes filled
+    float delta = this->chunk_scale / (float)this->chunk_resolution * 0.5f;
+
+    for (int x = -1; x <= 1; x += 2) {
+        for (int y = -1; y <= 1; y += 2) {
+            for (int z = -1; z <= 1; z += 2) {
+                this->set_voxel_filled(depth, glm::vec3(x, y, z) * delta,
+                                       color);
+            }
+        }
+    }
+}
+
 auto Scene::load_vox_file(const std::vector<uint8_t> &buffer) -> void {
     const ogt_vox_scene *scene = ogt_vox_read_scene(&buffer[0], buffer.size());
 

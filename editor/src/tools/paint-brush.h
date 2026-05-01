@@ -6,6 +6,8 @@
 #include <vxng/geometry.h>
 #include <vxng/scene.h>
 
+#include <random>
+
 class PaintBrush : public DraggableTool {
   public:
     PaintBrush();
@@ -22,11 +24,21 @@ class PaintBrush : public DraggableTool {
                                const EventBundle &bundle) -> void override;
 
   private:
-    // params
-    int size;
+    typedef enum Mode {
+        FULL_KERNEL,
+        AIRBRUSH,
+    } Mode;
 
-    // stamping
+    // params
+    Mode mode;
+    int size;
+    float airbrush_strength;
+
+    // stamping / airbrushing
     BrushKernel brush_kernel;
+    std::random_device rd;
+    std::mt19937 rgen;
+    std::uniform_real_distribution<float> rdist;
 
     auto handle_drag_step(int step_idx, int total_steps,
                           glm::vec2 step_mouse_ndc_coords,

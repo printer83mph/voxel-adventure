@@ -161,6 +161,10 @@ auto Editor::init() -> int {
 
     // set initial renderer size (shader globals)
     this->renderer.resize(width, height);
+    // set renderer light params
+    this->renderer.set_light_dir(glm::vec3(0.5, 1.0, 0.3));
+    this->renderer.set_dirlight_color(glm::vec3(0.8));
+    this->renderer.set_ambient_color(glm::vec3(0.2));
 
     this->viewport_camera.init_webgpu(this->wgpu.device);
     this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);

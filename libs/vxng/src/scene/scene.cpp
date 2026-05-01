@@ -108,6 +108,8 @@ auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
     // scene to output
     ogt_vox_scene scene = {};
 
+    // just 1 model, nothing else
+    scene.num_models = 1;
     scene.num_cameras = 0;
     scene.num_color_names = 0;
     scene.num_groups = 0;
@@ -117,10 +119,31 @@ auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
     scene.anim_range_end = 0;
 
     // collect palette into array (first element is blank)
-    std::array<glm::u8vec4, 256> palette = {};
+    std::vector<glm::u8vec4> palette = {};
+    palette.reserve(256);
+    palette.push_back({0, 0, 0, 0});
     std::unordered_map<glm::u8vec4, int> color_to_palette_idx = {};
 
-    // TODO: color collection
+    for (auto &chunk_pair : this->chunks) {
+        if (chunk_pair.second->is_empty())
+            continue; // skip chunk if empty
+
+        // collect colors from chunk and add to vector
+        auto chunk_colors = chunk_pair.second->collect_colors();
+        for (auto color : chunk_colors) {
+            auto existing_color_idx = color_to_palette_idx.find(color);
+            if (existing_color_idx != color_to_palette_idx.end())
+                continue; // skip if we already counted this color
+
+            color_to_palette_idx[color] = palette.size();
+            palette.push_back(color);
+        }
+    }
+
+    if (palette.size() > 255) {
+        throw std::runtime_error(
+            "More than 255 colors were found in the scene!");
+    }
 
     scene.palette = {};
     for (int i = 0; i < 256; ++i) {
@@ -129,10 +152,60 @@ auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
             .r = color.r, .g = color.g, .b = color.b, .a = color.a};
     }
 
-    // iterate through chunks and create a vox model per chunk
-    std::vector<ogt_vox_model> models;
+    // figure out full scene bounds
+    glm::ivec3 min_chunk = glm::ivec3(std::numeric_limits<int>::max());
+    glm::ivec3 max_chunk = glm::ivec3(std::numeric_limits<int>::min());
+    for (auto &chunk_pair : this->chunks) {
+        min_chunk = glm::min(min_chunk, chunk_pair.first);
+        max_chunk = glm::max(max_chunk, chunk_pair.first);
+    }
+    glm::ivec3 dimensions_in_chunks = max_chunk - min_chunk;
+    glm::ivec3 dimensions_in_voxels =
+        dimensions_in_chunks * this->chunk_resolution;
 
-    // TODO: create models
+    // iterate through chunks and insert data into array
+    std::vector<uint8_t> voxel_data;
+    voxel_data.reserve(dimensions_in_voxels.x * dimensions_in_voxels.y *
+                       dimensions_in_voxels.z);
+
+    float local_voxel_size = 1.f / this->chunk_resolution;
+    glm::vec3 voxel_start_sample_pos =
+        glm::vec3(-0.5f) + glm::vec3(local_voxel_size * 0.5f);
+    for (auto &chunk_pair : this->chunks) {
+        const Chunk *chunk = chunk_pair.second.get();
+
+        auto chunk_voxel_offset =
+            (chunk_pair.first - min_chunk) * this->chunk_resolution;
+
+        for (int x = 0; x < this->chunk_resolution; ++x) {
+            for (int y = 0; y < this->chunk_resolution; ++y) {
+                for (int z = 0; z < this->chunk_resolution; ++z) {
+                    glm::vec3 local_sample_position =
+                        voxel_start_sample_pos + glm::vec3() * local_voxel_size;
+                    auto sample = chunk->sample_position(local_sample_position);
+
+                    auto global_voxel_coord =
+                        chunk_voxel_offset + glm::ivec3(x, y, z);
+
+                    int destination_index = 0; // TODO: compute this bullshit
+
+                    if (sample.has_value()) {
+                        voxel_data[destination_index] =
+                            color_to_palette_idx[sample.value()];
+                    } else {
+                        voxel_data[destination_index] = 0u;
+                    }
+                }
+            }
+        }
+
+        vxng::geometry::AABB bounds = chunk->get_bounds();
+    }
+
+    ogt_vox_model model;
+
+    const ogt_vox_model *model_ptr = &model;
+    scene.models = &model_ptr;
 
     return ogt_vox_write_scene(&scene, buffer_size);
 }

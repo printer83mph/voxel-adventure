@@ -53,6 +53,7 @@ class Scene {
      * Fills bottom 4 octants of root chunk with the given color.
      */
     auto fill_basic_plane(glm::u8vec4 color) -> void;
+    auto fill_center_cubes(int depth, glm::u8vec4 color) -> void;
 
     auto load_vox_file(const std::vector<uint8_t> &buffer) -> void;
     /** Make sure to call `destroy_vox_buffer` when done! */

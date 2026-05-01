@@ -331,7 +331,32 @@ auto Editor::run_gui() -> void {
         ImGui::Begin("Options");
         if (ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen)) {
 
+            // Light settings
+            ImGui::SeparatorText("Lighting");
+
+            ImGui::Text("Ambient Light Color");
+            if (ImGui::ColorEdit3("##AmbientLightColor",
+                                  &this->ambient_light_color[0])) {
+                this->renderer.set_ambient_color(this->ambient_light_color);
+            };
+
+            ImGui::Text("Directional Light Color");
+            if (ImGui::ColorEdit3("##DirectionalLightColor",
+                                  &this->dirlight_color[0])) {
+                this->renderer.set_dirlight_color(this->dirlight_color);
+            };
+
+            ImGui::Text("Light Direction");
+            if (ImGui::SliderFloat3("##DirectionalLightDirection",
+                                    &this->light_dir[0], -1.0f, 1.0f)) {
+                this->renderer.set_light_dir(this->light_dir);
+            };
+
+            ImGui::Dummy(ImVec2(0.0f, 16.0f));
+
             // Scene Resolution
+            ImGui::SeparatorText("Scale");
+
             float scale = this->scene->get_chunk_scale();
             int unit_voxel_depth = glm::log2(512.f / scale);
             int original_uvd = unit_voxel_depth;

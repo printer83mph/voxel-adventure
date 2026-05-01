@@ -4,10 +4,13 @@
 
 #include <ogt/ogt_vox.h>
 
+#include <array>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
 #define DEFAULT_CHUNK_SCALE 4.0f
 #define DEFAULT_CHUNK_RESOLUTION 512
@@ -99,6 +102,43 @@ auto Scene::load_vox_file(const std::vector<uint8_t> &buffer) -> void {
     }
 
     ogt_vox_destroy_scene(scene);
+}
+
+auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
+    // scene to output
+    ogt_vox_scene scene = {};
+
+    scene.num_cameras = 0;
+    scene.num_color_names = 0;
+    scene.num_groups = 0;
+    scene.num_instances = 0;
+    scene.num_layers = 0;
+    scene.anim_range_start = 0;
+    scene.anim_range_end = 0;
+
+    // collect palette into array (first element is blank)
+    std::array<glm::u8vec4, 256> palette = {};
+    std::unordered_map<glm::u8vec4, int> color_to_palette_idx = {};
+
+    // TODO: color collection
+
+    scene.palette = {};
+    for (int i = 0; i < 256; ++i) {
+        auto color = palette[i];
+        scene.palette.color[i] = ogt_vox_rgba{
+            .r = color.r, .g = color.g, .b = color.b, .a = color.a};
+    }
+
+    // iterate through chunks and create a vox model per chunk
+    std::vector<ogt_vox_model> models;
+
+    // TODO: create models
+
+    return ogt_vox_write_scene(&scene, buffer_size);
+}
+
+auto Scene::destroy_vox_buffer(uint8_t *buffer) const -> void {
+    ogt_vox_free(buffer);
 }
 
 auto Scene::sample_position(glm::vec3 position) const

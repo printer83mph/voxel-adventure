@@ -3,12 +3,15 @@
 #include "chunk.h"
 
 #include <ogt/ogt_vox.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 
 #include <array>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -159,6 +162,14 @@ auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
             "More than 255 colors were found in the scene!");
     }
 
+    // DEBUG
+    std::string colors = "colors: ";
+    for (auto &cpair : color_to_palette_idx) {
+        colors += glm::to_string(cpair.first) + ":" +
+                  std::to_string(cpair.second) + ", ";
+    }
+    std::cout << colors << std::endl;
+
     scene.palette = {};
     for (int i = 0; i < 256; ++i) {
         auto color = palette[i];
@@ -167,35 +178,42 @@ auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
     }
 
     // figure out full scene bounds
-    glm::ivec3 min_chunk = glm::ivec3(std::numeric_limits<int>::max());
-    glm::ivec3 max_chunk = glm::ivec3(std::numeric_limits<int>::min());
+    glm::ivec3 min_chunk = glm::ivec3(0);
+    glm::ivec3 max_chunk = glm::ivec3(0);
     for (auto &chunk_pair : this->chunks) {
-        min_chunk = glm::min(min_chunk, chunk_pair.first);
-        max_chunk = glm::max(max_chunk, chunk_pair.first);
+        auto coords = chunk_pair.first;
+        min_chunk = glm::min(min_chunk, coords);
+        max_chunk = glm::max(max_chunk, coords);
     }
-    glm::ivec3 dimensions_in_chunks = max_chunk - min_chunk;
+    glm::ivec3 dimensions_in_chunks = (max_chunk + 1) - min_chunk;
     glm::ivec3 dimensions_in_voxels =
         dimensions_in_chunks * this->chunk_resolution;
 
     // iterate through chunks and insert data into array
-    std::vector<uint8_t> voxel_data;
-    voxel_data.reserve(dimensions_in_voxels.x * dimensions_in_voxels.y *
-                       dimensions_in_voxels.z);
+    std::vector<uint8_t> voxel_data(dimensions_in_voxels.x *
+                                        dimensions_in_voxels.y *
+                                        dimensions_in_voxels.z,
+                                    0u);
 
     float local_voxel_size = 1.f / this->chunk_resolution;
-    glm::vec3 voxel_start_sample_pos =
+    glm::vec3 local_voxel_start_sample_pos =
         glm::vec3(-0.5f) + glm::vec3(local_voxel_size * 0.5f);
+
     for (auto &chunk_pair : this->chunks) {
         const Chunk *chunk = chunk_pair.second.get();
+        if (chunk->is_empty())
+            continue;
 
         auto chunk_voxel_offset =
             (chunk_pair.first - min_chunk) * this->chunk_resolution;
 
         for (int x = 0; x < this->chunk_resolution; ++x) {
+            int filled_voxels = 0;
             for (int y = 0; y < this->chunk_resolution; ++y) {
                 for (int z = 0; z < this->chunk_resolution; ++z) {
                     glm::vec3 local_sample_position =
-                        voxel_start_sample_pos + glm::vec3() * local_voxel_size;
+                        local_voxel_start_sample_pos +
+                        glm::vec3(x, y, z) * local_voxel_size;
                     auto sample = chunk->sample_position(local_sample_position);
 
                     auto global_voxel_coord =
@@ -210,17 +228,22 @@ auto Scene::write_vox_buffer(uint32_t *buffer_size) const -> uint8_t * {
                     if (sample.has_value()) {
                         voxel_data[destination_index] =
                             color_to_palette_idx[sample.value()];
-                    } else {
-                        voxel_data[destination_index] = 0u;
+                        ++filled_voxels;
                     }
                 }
             }
+            std::cout << "completed x layer " << x << " with " << filled_voxels
+                      << " leaves" << std::endl;
         }
 
         vxng::geometry::AABB bounds = chunk->get_bounds();
     }
 
     ogt_vox_model model;
+    model.voxel_data = voxel_data.data();
+    model.size_x = dimensions_in_voxels.x;
+    model.size_y = dimensions_in_voxels.y;
+    model.size_z = dimensions_in_voxels.z;
 
     const ogt_vox_model *model_ptr = &model;
     scene.models = &model_ptr;

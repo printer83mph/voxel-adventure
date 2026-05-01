@@ -56,7 +56,12 @@ class Scene {
     auto fill_center_cubes(int depth, glm::u8vec4 color) -> void;
 
     auto load_vox_file(const std::vector<uint8_t> &buffer) -> void;
-    /** Make sure to call `destroy_vox_buffer` when done! */
+    /**
+     * Writes scene to a buffer, returning the buffer pointer
+     * and spitting out buffer size.
+     *
+     * Make sure to call `destroy_vox_buffer` when done!
+     */
     auto write_vox_buffer(uint32_t *buffer_size) const -> uint8_t *;
     auto destroy_vox_buffer(uint8_t *buffer) const -> void;
 

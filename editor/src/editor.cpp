@@ -20,6 +20,7 @@ Editor::Editor()
       scene(std::make_unique<vxng::scene::Scene>(SCENE_RESOLUTION,
                                                  DEFAULT_SCENE_SCALE)),
       cursors(), tools(), current_tool(&tools.voxel_brush), palette(),
+      light_dir(0.5, 1.0, 0.3), dirlight_color(0.8), ambient_light_color(0.2),
       background_color(0.1) {
     palette.init_default_colors();
 };
@@ -163,10 +164,10 @@ auto Editor::init() -> int {
     // set initial renderer size (shader globals)
     this->renderer.resize(width, height);
     // set renderer light params
-    this->renderer.set_light_dir(glm::vec3(0.5, 1.0, 0.3));
-    this->renderer.set_dirlight_color(glm::vec3(0.8));
-    this->renderer.set_ambient_color(glm::vec3(0.2));
-    this->renderer.set_background_color(background_color);
+    this->renderer.set_light_dir(this->light_dir);
+    this->renderer.set_dirlight_color(this->dirlight_color);
+    this->renderer.set_ambient_color(this->ambient_light_color);
+    this->renderer.set_background_color(this->background_color);
 
     this->viewport_camera.init_webgpu(this->wgpu.device);
     this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);

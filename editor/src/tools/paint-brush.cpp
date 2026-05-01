@@ -16,7 +16,7 @@ auto PaintBrush::get_tool_name() -> const char * { return "Paintbrush"; }
 
 // no ui for this yet
 auto PaintBrush::render_ui() -> void {
-    if (ImGui::RadioButton("Full Kernel", (int *)&this->mode,
+    if (ImGui::RadioButton("Normal", (int *)&this->mode,
                            (int)Mode::FULL_KERNEL)) {
     }
     ImGui::SameLine();
@@ -27,9 +27,12 @@ auto PaintBrush::render_ui() -> void {
 
     if (ImGui::SliderInt("Size", &this->size, 1, 10))
         this->brush_kernel.set_size(this->size);
-    if (ImGui::SliderFloat("Airbrush Strength", &this->airbrush_strength,
-                           0.001f, 0.025f))
-        this->brush_kernel.set_size(this->size);
+
+    if (this->mode == Mode::AIRBRUSH) {
+        if (ImGui::SliderFloat("Airbrush Strength", &this->airbrush_strength,
+                               0.001f, 0.025f))
+            this->brush_kernel.set_size(this->size);
+    }
 
     this->render_flow_density_ui();
 }

@@ -7,7 +7,7 @@
 
 PaintBrush::PaintBrush()
     : DraggableTool(5.f), mode(Mode::FULL_KERNEL), size(2),
-      airbrush_strength(0.5), brush_kernel(size), rd(), rgen(rd()),
+      airbrush_strength(0.025f), brush_kernel(size), rd(), rgen(rd()),
       rdist(0.f, 1.f) {}
 
 PaintBrush::~PaintBrush() {}
@@ -27,8 +27,8 @@ auto PaintBrush::render_ui() -> void {
 
     if (ImGui::SliderInt("Size", &this->size, 1, 10))
         this->brush_kernel.set_size(this->size);
-    if (ImGui::SliderFloat("Airbrush Strength", &this->airbrush_strength, 0.01f,
-                           1.f))
+    if (ImGui::SliderFloat("Airbrush Strength", &this->airbrush_strength,
+                           0.001f, 0.025f))
         this->brush_kernel.set_size(this->size);
 
     this->render_flow_density_ui();

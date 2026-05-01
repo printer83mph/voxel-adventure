@@ -352,6 +352,12 @@ auto Editor::run_gui() -> void {
                 this->renderer.set_light_dir(this->light_dir);
             };
 
+            ImGui::Text("Background Color");
+            if (ImGui::ColorEdit3("##BackgroundColor",
+                                  &this->background_color[0])) {
+                this->renderer.set_background_color(this->background_color);
+            };
+
             ImGui::Dummy(ImVec2(0.0f, 16.0f));
 
             // Scene Resolution

@@ -46,4 +46,6 @@ class PaintBrush : public DraggableTool {
 
     auto stamp_paint(glm::vec3 position, const EventBundle &bundle,
                      bool skip_update_buffers = false) -> void;
+
+    auto sample_airbrush_chance(float factor) -> bool;
 };

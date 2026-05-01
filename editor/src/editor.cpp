@@ -19,7 +19,8 @@ Editor::Editor()
     : renderer(), viewport_camera(),
       scene(std::make_unique<vxng::scene::Scene>(SCENE_RESOLUTION,
                                                  DEFAULT_SCENE_SCALE)),
-      cursors(), tools(), current_tool(&tools.voxel_brush), palette() {
+      cursors(), tools(), current_tool(&tools.voxel_brush), palette(),
+      background_color(0.1) {
     palette.init_default_colors();
 };
 
@@ -165,6 +166,7 @@ auto Editor::init() -> int {
     this->renderer.set_light_dir(glm::vec3(0.5, 1.0, 0.3));
     this->renderer.set_dirlight_color(glm::vec3(0.8));
     this->renderer.set_ambient_color(glm::vec3(0.2));
+    this->renderer.set_background_color(background_color);
 
     this->viewport_camera.init_webgpu(this->wgpu.device);
     this->viewport_camera.set_aspect_ratio(static_cast<float>(width) / height);
@@ -239,7 +241,8 @@ auto Editor::draw_to_surface() -> void {
     renderPassColorAttachment.resolveTarget = nullptr;
     renderPassColorAttachment.loadOp = wgpu::LoadOp::Clear;
     renderPassColorAttachment.storeOp = wgpu::StoreOp::Store;
-    renderPassColorAttachment.clearValue = wgpu::Color{0.0, 0.0, 0.0, 1.0};
+    renderPassColorAttachment.clearValue = wgpu::Color{
+        background_color.r, background_color.g, background_color.b, 1.0};
 
     // depth attachment for multi-chunk rendering
     wgpu::RenderPassDepthStencilAttachment depthAttachment;

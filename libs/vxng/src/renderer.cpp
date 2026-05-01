@@ -11,7 +11,7 @@
 
 namespace vxng {
 
-Renderer::Renderer() {};
+Renderer::Renderer() : background_color(0.3) {};
 Renderer::~Renderer() {
     // WebGPU objects are automatically released when their reference counted
     // handles all go out of scope
@@ -226,6 +226,10 @@ auto Renderer::set_dirlight_color(glm::vec3 color) -> void {
 auto Renderer::set_ambient_color(glm::vec3 color) -> void {
     this->wgpu.queue.WriteBuffer(this->wgpu.globals_uniforms_buffer, 48, &color,
                                  sizeof(float) * 3);
+}
+
+auto Renderer::set_background_color(glm::vec3 color) -> void {
+    this->background_color = color;
 }
 
 auto Renderer::set_scene(const vxng::scene::Scene *scene) -> void {

@@ -299,6 +299,9 @@ auto Editor::run_gui() -> void {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::MenuItem("Save")) {
+                this->handle_save_vox_file();
+            }
             if (ImGui::MenuItem("Open")) {
                 this->handle_open_vox_file();
             }
@@ -380,9 +383,52 @@ const SDL_DialogFileFilter Editor::vox_filters[] = {
     {.name = "MagicaVoxel files", .pattern = "vox"},
 };
 
+auto Editor::handle_save_vox_file() -> void {
+    SDL_ShowSaveFileDialog(&save_vox_file, this, this->sdl_window, vox_filters,
+                           1, NULL);
+}
+
 auto Editor::handle_open_vox_file() -> void {
     SDL_ShowOpenFileDialog(&open_vox_file, this, this->sdl_window, vox_filters,
                            1, NULL, false);
+}
+
+auto Editor::save_vox_file(void *user_data, const char *const *file_list,
+                           int filter) -> void {
+    // we passed the editor through as user data
+    Editor *editor = (Editor *)user_data;
+
+    if (!file_list) {
+        SDL_Log("An error occured: %s", SDL_GetError());
+        return;
+    } else if (!*file_list) {
+        SDL_Log("The user did not select any file.");
+        SDL_Log("Most likely, the dialog was canceled.");
+        return;
+    }
+
+    auto f = *file_list;
+
+    // save file using fstream
+    uint32_t buffer_size = 0;
+    uint8_t *buffer = editor->scene->write_vox_buffer(&buffer_size);
+    if (!buffer) {
+        SDL_Log("Failed to write vox file to buffer");
+        return;
+    }
+
+    std::ofstream file(f, std::ios::binary);
+    if (!file.is_open()) {
+        SDL_Log("Failed to open file for writing: '%s'", f);
+        editor->scene->destroy_vox_buffer(buffer);
+        return;
+    }
+
+    file.write(reinterpret_cast<char *>(buffer), buffer_size);
+    file.close();
+
+    SDL_Log("Saved vox file: '%s'", f);
+    editor->scene->destroy_vox_buffer(buffer);
 }
 
 auto Editor::open_vox_file(void *user_data, const char *const *file_list,

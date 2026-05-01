@@ -50,7 +50,10 @@ class Editor {
     auto handle_mouse_up(const SDL_MouseButtonEvent &event) -> void;
 
     static const SDL_DialogFileFilter vox_filters[];
+    auto handle_save_vox_file() -> void;
     auto handle_open_vox_file() -> void;
+    static auto save_vox_file(void *user_data, const char *const *file_list,
+                              int filter) -> void;
     static auto open_vox_file(void *user_data, const char *const *file_list,
                               int filter) -> void;
 

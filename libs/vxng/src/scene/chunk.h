@@ -3,6 +3,8 @@
 #include "vxng/geometry.h"
 
 #include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 #include <webgpu/webgpu_cpp.h>
 
 #include <array>
@@ -75,6 +77,11 @@ class Chunk {
     // --------- Utility ---------
 
     auto get_bounds() const -> geometry::AABB;
+    /**
+     * Computes and returns the min and (exclusive) max bounds of filled voxels
+     * (at max depth).
+     */
+    auto get_leaf_bounds() const -> std::pair<glm::ivec3, glm::ivec3>;
 
     /** Sets new position and scale, then updates buffers */
     auto reposition(glm::vec3 pos, float scale) -> void;

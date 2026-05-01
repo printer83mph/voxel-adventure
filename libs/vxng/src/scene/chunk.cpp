@@ -65,6 +65,76 @@ auto Chunk::get_bounds() const -> geometry::AABB {
     return bounds;
 }
 
+auto Chunk::get_leaf_bounds() const -> std::pair<glm::ivec3, glm::ivec3> {
+    typedef struct ExclusiveBounds {
+        glm::ivec3 start;
+        glm::ivec3 exclusive_end;
+    } ExclusiveBounds;
+
+    // DFS to find bounds of filled voxels (at max depth)
+    std::stack<std::pair<OctreeNode *, ExclusiveBounds>> node_stack = {};
+
+    glm::ivec3 min_filled = glm::ivec3(this->resolution);
+    glm::ivec3 excl_max_filled = glm::ivec3(0);
+
+    bool found_any = false;
+
+    node_stack.push({
+        this->root_node.get(),
+        ExclusiveBounds{
+            .start = glm::ivec3(0, 0, 0),
+            .exclusive_end = glm::ivec3(this->resolution),
+        },
+    });
+
+    while (!node_stack.empty()) {
+        auto [node, bounds] = node_stack.top();
+        node_stack.pop();
+
+        if (node->is_leaf) {
+            // Found a filled leaf at max depth, update bounds
+            min_filled = glm::min(min_filled, bounds.start);
+            excl_max_filled = glm::max(excl_max_filled, bounds.exclusive_end);
+            found_any = true;
+            continue;
+        }
+
+        if (!node->has_children())
+            continue;
+
+        // push children onto stack (with their bounds)
+        for (int i = 0; i < 8; ++i) {
+            if (node->children[i]) {
+                glm::ivec3 mid = (bounds.start + bounds.exclusive_end) / 2;
+                glm::ivec3 child_start, child_excl_end;
+
+                child_start.x = (i & 1) ? mid.x : bounds.start.x;
+                child_start.y = (i & 2) ? mid.y : bounds.start.y;
+                child_start.z = (i & 4) ? mid.z : bounds.start.z;
+
+                child_excl_end.x = (i & 1) ? bounds.exclusive_end.x : mid.x;
+                child_excl_end.y = (i & 2) ? bounds.exclusive_end.y : mid.y;
+                child_excl_end.z = (i & 4) ? bounds.exclusive_end.z : mid.z;
+
+                node_stack.push({
+                    node->children[i].get(),
+                    ExclusiveBounds{
+                        .start = child_start,
+                        .exclusive_end = child_excl_end,
+                    },
+                });
+            }
+        }
+    }
+
+    // if no leaves found, return empty bounds
+    if (!found_any) {
+        return {glm::ivec3(0), glm::ivec3(0)};
+    }
+
+    return {min_filled, excl_max_filled};
+}
+
 auto Chunk::is_empty() const -> bool {
     // do DFS, if we find any leaf, it's over bros
     std::stack<OctreeNode *> node_stack = {};
